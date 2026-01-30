@@ -29,7 +29,6 @@ import "@xyflow/react/dist/style.css";
 import { Box } from "@mui/material";
 
 // Node components
-import SimpleResourceNode from "./components/nodes/SimpleResourceNode";
 import SimpleBuildingNode from "./components/nodes/SimpleBuildingNode";
 import SimpleGroupNode from "./components/nodes/SimpleGroupNode";
 import SimpleTransportNode from "./components/nodes/SimpleTransportNode";
@@ -42,12 +41,7 @@ import Sidebar from "./components/sidebar/Sidebar";
 import NodeEditorPanel from "./components/sidebar/NodeEditorPanel";
 
 // Constants - using extracted modules
-import {
-  CONVEYOR_RATES,
-  PIPE_RATES,
-  PURITY_RATES,
-  MINER_MULTIPLIERS,
-} from "./constants";
+import { CONVEYOR_RATES, PIPE_RATES } from "./constants";
 
 import {
   useCalculation,
@@ -55,8 +49,8 @@ import {
   useStackingLogic,
   useKeyboardShortcuts,
   useConveyorLiftLogic,
-  useConnectionHandling,
 } from "./hooks";
+import { useUndoStack } from "./hooks/useUndoStack";
 
 import {
   createCustomEdge,
@@ -66,12 +60,10 @@ import { ZoomControls, LayerPanel, Header } from "./components/toolbar";
 import type { UiSettings } from "./components/toolbar";
 
 // Utils
-import { getEdgeLabel } from "./utils/edgeLabelUtils";
 
 // Data
 import itemsData from "./data/items.json";
 import buildingsData from "./data/buildings.json";
-import resourcesData from "./data/resources.json";
 
 // Context & Utils
 import {
@@ -88,7 +80,6 @@ import {
 
 // Define types OUTSIDE component - this is critical for performance
 const nodeTypes: NodeTypes = {
-  resource: SimpleResourceNode,
   building: SimpleBuildingNode,
   group: SimpleGroupNode,
   transport: SimpleTransportNode,
@@ -190,7 +181,6 @@ const FlowCanvas = memo(
             left: 20,
           }}
           nodeColor={(node) => {
-            if (node.type === "resource") return "#fa9549";
             if (node.type === "building") return "#fa9549";
             if (node.type === "transport") return "#60a5fa";
             return "#888";
@@ -233,18 +223,7 @@ function AppContent() {
   const [uiSettings, setUiSettings] = useState(defaultUiSettings);
   const [currentLayer, setCurrentLayer] = useState(1);
   const [interactionLocked, setInteractionLocked] = useState(false);
-  const appVersion = "0.1";
-  const changelogEntries = [
-    {
-      version: "0.1",
-      title: "Initial changelog",
-      changes: [
-        "Storage flow calc (fill time, net rate, demand).",
-        "Resource + extractor pipe fixes, UI tweaks.",
-      ],
-    },
-  ];
-  const repoUrl = import.meta.env.VITE_REPO_URL || "https://github.com";
+  const repoUrl = "https://github.com/Lonsdale201/satisfactory-designer";
   const allowPanelRef = useRef(false);
   const ignoreSelectionRef = useRef(false);
   const selectedNodeIdRef = useRef<string | null>(null);
@@ -314,6 +293,14 @@ function AppContent() {
     setNodeIdCounter,
   });
 
+  // Undo stack for node deletions
+  const { saveBeforeDelete, handleUndo } = useUndoStack({
+    nodesRef,
+    edgesRef,
+    setNodes,
+    setEdges,
+  });
+
   const { ctrlDownRef } = useKeyboardShortcuts({
     nodesRef,
     edgesRef,
@@ -321,6 +308,8 @@ function AppContent() {
     setNodes,
     setEdges,
     handleDuplicateNodes,
+    saveBeforeDelete,
+    handleUndo,
   });
 
   const { getLiftGhostsForLayer, syncGhostPosition } = useConveyorLiftLogic({
@@ -348,6 +337,7 @@ function AppContent() {
     alwaysShowEdgeLabels: uiSettings.alwaysShowEdgeLabels,
     hoveredEdgeId: hoveredEdgeId,
     isDragging: isDragging,
+    edges: edges,
   });
 
   useEffect(() => {
@@ -362,6 +352,10 @@ function AppContent() {
   useEffect(() => {
     edgeContextRef.current.isDragging = isDragging;
   }, [isDragging]);
+
+  useEffect(() => {
+    edgeContextRef.current.edges = edges;
+  }, [edges]);
 
   useEffect(() => {
     reactFlowRef.current = reactFlowInstance;
@@ -403,8 +397,15 @@ function AppContent() {
   useEffect(() => {
     const saved = loadFromLocalStorage();
     if (saved) {
-      setNodes(saved.nodes);
-      setEdges(saved.edges);
+      const filteredNodes = saved.nodes.filter((node) => node.type !== "resource");
+      const removedIds = new Set(
+        saved.nodes.filter((node) => node.type === "resource").map((n) => n.id),
+      );
+      const filteredEdges = saved.edges.filter(
+        (edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target),
+      );
+      setNodes(filteredNodes);
+      setEdges(filteredEdges);
       setNodeIdCounter(saved.nodeIdCounter);
     }
     setIsInitialized(true);
@@ -430,8 +431,15 @@ function AppContent() {
   const handleImport = useCallback(async () => {
     try {
       const state = await importFromFile();
-      setNodes(state.nodes);
-      setEdges(state.edges);
+      const filteredNodes = state.nodes.filter((node) => node.type !== "resource");
+      const removedIds = new Set(
+        state.nodes.filter((node) => node.type === "resource").map((n) => n.id),
+      );
+      const filteredEdges = state.edges.filter(
+        (edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target),
+      );
+      setNodes(filteredNodes);
+      setEdges(filteredEdges);
       setNodeIdCounter(state.nodeIdCounter);
     } catch (error) {
       console.error("Import failed:", error);
@@ -476,6 +484,7 @@ function AppContent() {
       targetNodeId: string | null | undefined,
       nodeList: Node[],
       sourceHandle?: string | null,
+      edgeData?: Record<string, unknown> | null,
     ): string => {
       const resolveStackNode = (node: Node | undefined) => {
         if (!node) return undefined;
@@ -489,8 +498,10 @@ function AppContent() {
         return node;
       };
 
+      const resolvedSourceId =
+        (edgeData?.virtualSourceId as string | undefined) || sourceNodeId;
       const sourceNode = resolveStackNode(
-        nodeList.find((n) => n.id === sourceNodeId),
+        nodeList.find((n) => n.id === resolvedSourceId),
       );
       if (!sourceNode) return "";
       const targetNode = targetNodeId
@@ -505,36 +516,30 @@ function AppContent() {
         ? `${PIPE_RATES[pipeMk as keyof typeof PIPE_RATES]} m³/min`
         : `${CONVEYOR_RATES[conveyorMk as keyof typeof CONVEYOR_RATES]}/min`;
 
-      if (sourceNode.type === "resource") {
-        const resource = itemsData.items.find((i) => i.id === data.resourceId);
-        const purity = (data.purity as string) || "normal";
-        const purityKey =
-          purity === "impure"
-            ? "impure"
-            : purity === "pure"
-              ? "pure"
-              : "normal";
-        const rate = PURITY_RATES[purityKey as keyof typeof PURITY_RATES] || 60;
-        const targetData = (targetNode?.data as Record<string, unknown>) || {};
-        const targetBuildingId = (targetData.buildingId as string) || "";
-        const targetConveyorMk = (targetData.conveyorMk as number) || 1;
-        const targetPipeMk = (targetData.pipeMk as number) || 1;
-        const mkMultiplier = { 1: 1, 2: 2, 3: 4 } as const;
-        const pipeMultiplier = { 1: 1, 2: 2, 3: 3 } as const;
-        const minerMultiplier =
-          MINER_MULTIPLIERS[targetBuildingId as keyof typeof MINER_MULTIPLIERS];
-        const actualRate = isPipe
-          ? rate * pipeMultiplier[targetPipeMk as 1 | 2 | 3]
-          : rate *
-            (minerMultiplier ?? mkMultiplier[targetConveyorMk as 1 | 2 | 3]);
-        return resource
-          ? `${resource.name} (${rate}/min) ${actualRate}/min`
-          : "";
-      }
-
       if (sourceNode.type === "building") {
-        const item = itemsData.items.find((i) => i.id === data.outputItem);
-        const rate = data.production || 0;
+        const edgeItemId = edgeData?.itemId as string | undefined;
+        const outputItemId = data.outputItem as string | undefined;
+        const itemId = edgeItemId || outputItemId;
+        const item = itemsData.items.find((i) => i.id === itemId);
+        let rate = data.production || 0;
+        if (itemId && outputItemId && itemId !== outputItemId) {
+          const outputItem = itemsData.items.find(
+            (i) => i.id === outputItemId,
+          );
+          const selectedRecipeIndex = data.selectedRecipeIndex as
+            | number
+            | undefined;
+          const recipeIndex =
+            selectedRecipeIndex ?? outputItem?.defaultRecipeIndex ?? 0;
+          const recipe = outputItem?.recipes?.[recipeIndex];
+          const byproduct = recipe?.byproducts?.find(
+            (byp) => byp.item === itemId,
+          );
+          if (byproduct && outputItem?.defaultProduction) {
+            const scale = rate / outputItem.defaultProduction;
+            rate = byproduct.amount * scale;
+          }
+        }
         return item ? `${item.name} ${rate}/min (${mkRate})` : "";
       }
 
@@ -590,15 +595,6 @@ function AppContent() {
         if (!nodeId) return null;
         const node = nodesRef.current.find((n) => n.id === nodeId);
         if (!node) return null;
-        if (node.type === "resource") {
-          // Check resource state to determine if it's fluid or solid
-          const resourceId = (node.data as Record<string, unknown>)
-            ?.resourceId as string;
-          const resource = resourcesData.resources.find(
-            (r) => r.id === resourceId,
-          );
-          return resource?.state === "fluid" ? "pipe" : "conveyor";
-        }
         if (node.type === "building") {
           const buildingId = (node.data as Record<string, unknown>)
             ?.buildingId as string | undefined;
@@ -637,26 +633,36 @@ function AppContent() {
         parseType(params.targetHandle) ??
         inferType(resolvedParams.target, "input");
 
+      const resolveStackEndpoint = (nodeId: string | null | undefined) => {
+        if (!nodeId) return nodeId;
+        const node = nodesRef.current.find((n) => n.id === nodeId);
+        if (!node) return nodeId;
+        const data = node.data as Record<string, unknown>;
+        const stackCount = data.stackCount as number | undefined;
+        const stackActiveId = data.stackActiveId as string | undefined;
+        if (stackCount && stackCount > 1 && stackActiveId) {
+          return stackActiveId;
+        }
+        return nodeId;
+      };
+
+      const virtualSourceId = resolveStackEndpoint(resolvedParams.source);
+      const virtualTargetId = resolveStackEndpoint(resolvedParams.target);
+      if (!virtualSourceId || !virtualTargetId) return;
+
       const sourceNode = nodesRef.current.find(
-        (n) => n.id === resolvedParams.source,
+        (n) => n.id === virtualSourceId,
       );
       const targetNode = nodesRef.current.find(
-        (n) => n.id === resolvedParams.target,
+        (n) => n.id === virtualTargetId,
       );
+      const resolvedTargetNode = targetNode;
 
       const resolveDefaultType = (
         node: Node | undefined,
         direction: "input" | "output",
       ) => {
         if (!node) return null;
-        if (node.type === "resource") {
-          const resourceId = (node.data as Record<string, unknown>)
-            ?.resourceId as string;
-          const resource = resourcesData.resources.find(
-            (r) => r.id === resourceId,
-          );
-          return resource?.state === "fluid" ? "pipe" : "conveyor";
-        }
         if (node.type === "building") {
           const buildingId = (node.data as Record<string, unknown>)
             ?.buildingId as string | undefined;
@@ -697,6 +703,19 @@ function AppContent() {
         resolvedTargetType = resolvedSourceType;
       }
 
+      const forcedType =
+        params.sourceHandle?.includes("pipe") ||
+        params.targetHandle?.includes("pipe")
+          ? "pipe"
+          : params.sourceHandle?.includes("conveyor") ||
+              params.targetHandle?.includes("conveyor")
+            ? "conveyor"
+            : null;
+      if (forcedType) {
+        resolvedSourceType = forcedType;
+        resolvedTargetType = forcedType;
+      }
+
       if (
         !resolvedSourceType ||
         !resolvedTargetType ||
@@ -704,42 +723,79 @@ function AppContent() {
       )
         return;
 
-      // Auto-set Miner output when connected from Resource Node
-      if (sourceNode?.type === "resource" && targetNode?.type === "building") {
-        const targetData = targetNode.data as Record<string, unknown>;
-        const targetBuildingId = targetData.buildingId as string;
-        if (targetBuildingId?.startsWith("miner_")) {
-          const sourceData = sourceNode.data as Record<string, unknown>;
-          const resourceId = sourceData.resourceId as string;
-          if (resourceId && !targetData.outputItem) {
-            // Update the Miner's outputItem to match the Resource
-            setNodes((nds) =>
-              nds.map((n) => {
-                if (n.id === resolvedParams.target) {
-                  return { ...n, data: { ...n.data, outputItem: resourceId } };
-                }
-                return n;
-              }),
-            );
+      const getEdgeItemId = (
+        node: Node | undefined,
+        handleId?: string | null,
+      ): string | undefined => {
+        if (!node) return undefined;
+        const data = node.data as Record<string, unknown>;
+        if (node.type === "building") {
+          const outputItemId = data.outputItem as string | undefined;
+          if (!outputItemId) {
+            return data.storedItem as string | undefined;
           }
+          const isPipe = Boolean(handleId?.includes("pipe"));
+          if (isPipe) {
+            const outputItem = itemsData.items.find(
+              (item) => item.id === outputItemId,
+            );
+            if (outputItem?.category === "fluid") return outputItemId;
+            const selectedRecipeIndex = data.selectedRecipeIndex as
+              | number
+              | undefined;
+            const recipeIndex =
+              selectedRecipeIndex ?? outputItem?.defaultRecipeIndex ?? 0;
+            const recipe = outputItem?.recipes?.[recipeIndex];
+            const byproduct = recipe?.byproducts?.find((byp) => {
+              const bypItem = itemsData.items.find(
+                (item) => item.id === byp.item,
+              );
+              return bypItem?.category === "fluid";
+            });
+            if (byproduct) return byproduct.item;
+          }
+          return outputItemId;
         }
-      }
+        if (node.type === "transport") {
+          return data.deliveryItem as string | undefined;
+        }
+        if (node.type === "conveyorLift") {
+          return data.transportingItem as string | undefined;
+        }
+        if (node.type === "smartSplitter") {
+          const outputs = data.splitOutputs as
+            | Array<{ item: string | null }>
+            | undefined;
+          if (!outputs) return undefined;
+          if (handleId === "out-top-0") return outputs[0]?.item ?? undefined;
+          if (handleId === "out-right-0") return outputs[1]?.item ?? undefined;
+          if (handleId === "out-bottom-0") return outputs[2]?.item ?? undefined;
+        }
+        return undefined;
+      };
+
+      const edgeItemId = getEdgeItemId(sourceNode, params.sourceHandle);
 
       // Auto-set production building output based on incoming item
-      if (targetNode?.type === "building") {
-        const sourceData = (sourceNode?.data as Record<string, unknown>) || {};
-        const targetData = targetNode.data as Record<string, unknown>;
+      if (resolvedTargetNode?.type === "building") {
+        const sourceData =
+          (sourceNode?.data as Record<string, unknown>) || {};
+        const targetData = resolvedTargetNode.data as Record<string, unknown>;
         const targetBuildingId = targetData.buildingId as string;
+        const targetBuilding = buildingsData.buildings.find(
+          (b) => b.id === targetBuildingId,
+        );
+        if (targetBuilding?.id === "fluid_buffer") {
+          if (!edgeItemId) return;
+          const incomingItem = itemsData.items.find(
+            (item) => item.id === edgeItemId,
+          );
+          if (incomingItem?.category !== "fluid") return;
+        }
 
         // Get the item being provided by the source
         let incomingItem: string | undefined;
-        if (sourceNode?.type === "resource") {
-          incomingItem = sourceData.resourceId as string | undefined;
-        } else if (sourceNode?.type === "building") {
-          incomingItem = sourceData.outputItem as string | undefined;
-        } else if (sourceNode?.type === "transport") {
-          incomingItem = sourceData.deliveryItem as string | undefined;
-        }
+        incomingItem = edgeItemId;
 
         // If target has no output set and we know what's coming in, auto-select
         if (incomingItem && !targetData.outputItem) {
@@ -757,7 +813,7 @@ function AppContent() {
             const defaultProduction = matchedItem.defaultProduction || 30;
             setNodes((nds) =>
               nds.map((n) => {
-                if (n.id === resolvedParams.target) {
+                if (n.id === resolvedTargetNode.id) {
                   return {
                     ...n,
                     data: {
@@ -775,8 +831,8 @@ function AppContent() {
       }
 
       // Auto-set Storage storedItem when first connected input arrives
-      if (targetNode?.type === "building") {
-        const targetData = targetNode.data as Record<string, unknown>;
+      if (resolvedTargetNode?.type === "building") {
+        const targetData = resolvedTargetNode.data as Record<string, unknown>;
         const targetBuildingId = targetData.buildingId as string | undefined;
         const targetBuilding = buildingsData.buildings.find(
           (b) => b.id === targetBuildingId,
@@ -785,32 +841,11 @@ function AppContent() {
           const storedItem = targetData.storedItem as string | undefined;
           const sourceData =
             (sourceNode?.data as Record<string, unknown>) || {};
-          const incomingItem =
-            sourceNode?.type === "resource"
-              ? (sourceData.resourceId as string | undefined)
-              : sourceNode?.type === "transport"
-                ? (sourceData.deliveryItem as string | undefined)
-                : sourceNode?.type === "smartSplitter"
-                  ? (() => {
-                      const outputs = sourceData.splitOutputs as
-                        | Array<{ item: string | null }>
-                        | undefined;
-                      if (!outputs) return undefined;
-                      if (params.sourceHandle === "out-top-0")
-                        return outputs[0]?.item ?? undefined;
-                      if (params.sourceHandle === "out-right-0")
-                        return outputs[1]?.item ?? undefined;
-                      if (params.sourceHandle === "out-bottom-0")
-                        return outputs[2]?.item ?? undefined;
-                      return undefined;
-                    })()
-                  : sourceNode?.type === "conveyorLift"
-                    ? (sourceData.transportingItem as string | undefined)
-                    : (sourceData.outputItem as string | undefined);
+          const incomingItem = edgeItemId;
           if (incomingItem && !storedItem) {
             setNodes((nds) =>
               nds.map((n) => {
-                if (n.id === resolvedParams.target) {
+                if (n.id === resolvedTargetNode.id) {
                   return {
                     ...n,
                     data: { ...n.data, storedItem: incomingItem },
@@ -824,38 +859,18 @@ function AppContent() {
       }
 
       // Auto-set Conveyor Lift transported item when first connected input arrives
-      if (targetNode?.type === "conveyorLift") {
-        const targetData = targetNode.data as Record<string, unknown>;
+      if (resolvedTargetNode?.type === "conveyorLift") {
+        const targetData = resolvedTargetNode.data as Record<string, unknown>;
         const transportingItem = targetData.transportingItem as
           | string
           | undefined;
-        const sourceData = (sourceNode?.data as Record<string, unknown>) || {};
-        const incomingItem =
-          sourceNode?.type === "resource"
-            ? (sourceData.resourceId as string | undefined)
-            : sourceNode?.type === "transport"
-              ? (sourceData.deliveryItem as string | undefined)
-              : sourceNode?.type === "smartSplitter"
-                ? (() => {
-                    const outputs = sourceData.splitOutputs as
-                      | Array<{ item: string | null }>
-                      | undefined;
-                    if (!outputs) return undefined;
-                    if (params.sourceHandle === "out-top-0")
-                      return outputs[0]?.item ?? undefined;
-                    if (params.sourceHandle === "out-right-0")
-                      return outputs[1]?.item ?? undefined;
-                    if (params.sourceHandle === "out-bottom-0")
-                      return outputs[2]?.item ?? undefined;
-                    return undefined;
-                  })()
-                : sourceNode?.type === "conveyorLift"
-                  ? (sourceData.transportingItem as string | undefined)
-                  : (sourceData.outputItem as string | undefined);
+        const sourceData =
+          (sourceNode?.data as Record<string, unknown>) || {};
+        const incomingItem = edgeItemId;
         if (incomingItem && !transportingItem) {
           setNodes((nds) =>
             nds.map((n) => {
-              if (n.id === resolvedParams.target) {
+              if (n.id === resolvedTargetNode.id) {
                 return {
                   ...n,
                   data: { ...n.data, transportingItem: incomingItem },
@@ -872,6 +887,11 @@ function AppContent() {
         resolvedParams.target,
         nodesRef.current,
         params.sourceHandle || null,
+        {
+          virtualSourceId,
+          virtualTargetId,
+          itemId: edgeItemId,
+        },
       );
       setEdges((eds) => {
         const newEdges = addEdge(
@@ -880,7 +900,13 @@ function AppContent() {
             source: resolvedParams.source,
             target: resolvedParams.target,
             type: "custom",
-            data: { label, material: resolvedSourceType },
+            data: {
+              label,
+              material: resolvedSourceType,
+              virtualSourceId,
+              virtualTargetId,
+              ...(edgeItemId ? { itemId: edgeItemId } : {}),
+            },
           } as Connection,
           eds,
         );
@@ -946,6 +972,26 @@ function AppContent() {
               },
             };
           }
+
+          // Propagate theme changes to all stacked children
+          if (field === "theme") {
+            const parentNode = nds.find((n) => n.id === nodeId);
+            if (parentNode) {
+              const stackedNodeIds = (
+                parentNode.data as Record<string, unknown>
+              ).stackedNodeIds as string[] | undefined;
+              if (stackedNodeIds && stackedNodeIds.includes(node.id)) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    theme: value,
+                  },
+                };
+              }
+            }
+          }
+
           return node;
         });
 
@@ -962,9 +1008,9 @@ function AppContent() {
 
         // Update edge labels only for relevant field changes
         const relevantFields = [
-          "resourceId",
-          "outputRate",
           "outputItem",
+          "selectedAltIndex",
+          "selectedRecipeIndex",
           "production",
           "conveyorMk",
           "pipeMk",
@@ -977,12 +1023,24 @@ function AppContent() {
         if (relevantFields.includes(field)) {
           setEdges((eds) =>
             eds.map((edge) => {
-              if (edge.source !== nodeId && edge.target !== nodeId) return edge;
+              const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+                ?.virtualSourceId as string | undefined;
+              const virtualTargetId = (edge.data as Record<string, unknown> | undefined)
+                ?.virtualTargetId as string | undefined;
+              if (
+                edge.source !== nodeId &&
+                edge.target !== nodeId &&
+                virtualSourceId !== nodeId &&
+                virtualTargetId !== nodeId
+              ) {
+                return edge;
+              }
               const newLabel = getEdgeLabel(
                 edge.source,
                 edge.target,
                 updatedNodes,
                 edge.sourceHandle || null,
+                (edge.data as Record<string, unknown> | undefined) || null,
               );
               if (edge.data?.label !== newLabel) {
                 return {
@@ -1493,32 +1551,7 @@ function AppContent() {
         let newEdge = { ...edge };
         let edgeChanged = false;
 
-        // Check source node for resource type
-        const sourceNode = nodes.find((n) => n.id === edge.source);
-        if (sourceNode?.type === "resource") {
-          const resourceId = (sourceNode.data as Record<string, unknown>)
-            ?.resourceId as string;
-          const resource = resourcesData.resources.find(
-            (r) => r.id === resourceId,
-          );
-          const expectedHandle =
-            resource?.state === "fluid" ? "out-pipe-0" : "out-conveyor-0";
-          const expectedMaterial =
-            resource?.state === "fluid" ? "pipe" : "conveyor";
-
-          if (edge.sourceHandle !== expectedHandle) {
-            newEdge = { ...newEdge, sourceHandle: expectedHandle };
-            edgeChanged = true;
-          }
-          if (newEdge.data?.material !== expectedMaterial) {
-            newEdge = {
-              ...newEdge,
-              data: { ...newEdge.data, material: expectedMaterial },
-            };
-            edgeChanged = true;
-          }
-        } else if (!edge.data?.material) {
-          // Fallback for non-resource nodes without material
+        if (!edge.data?.material) {
           const isPipe =
             edge.sourceHandle?.includes("pipe") ||
             edge.targetHandle?.includes("pipe");
@@ -1574,9 +1607,12 @@ function AppContent() {
   const outgoingEdgesBySource = useMemo(() => {
     const map = new Map<string, Edge[]>();
     edges.forEach((edge) => {
-      const list = map.get(edge.source) || [];
+      const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualSourceId as string | undefined;
+      const sourceId = virtualSourceId || edge.source;
+      const list = map.get(sourceId) || [];
       list.push(edge);
-      map.set(edge.source, list);
+      map.set(sourceId, list);
     });
     return map;
   }, [edges]);
@@ -1584,11 +1620,11 @@ function AppContent() {
   const incomingItemsByNode = useMemo(() => {
     const map = new Map<string, string[]>();
 
-    const getProvidedItems = (node: Node): string[] => {
+    const getProvidedItems = (node: Node, edge?: Edge): string[] => {
       const data = node.data as Record<string, unknown>;
-      if (node.type === "resource") {
-        return data.resourceId ? [data.resourceId as string] : [];
-      }
+      const edgeItemId = (edge?.data as Record<string, unknown> | undefined)
+        ?.itemId as string | undefined;
+      if (edgeItemId) return [edgeItemId];
       if (node.type === "building") {
         const buildingId = data.buildingId as string | undefined;
         const building = buildingsData.buildings.find(
@@ -1616,27 +1652,39 @@ function AppContent() {
     };
 
     edges.forEach((edge) => {
-      const source = nodeById.get(edge.source);
+      const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualSourceId as string | undefined;
+      const virtualTargetId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualTargetId as string | undefined;
+      const sourceId = virtualSourceId || edge.source;
+      const targetId = virtualTargetId || edge.target;
+      const source = nodeById.get(sourceId);
       if (!source) return;
-      const items = getProvidedItems(source);
+      const items = getProvidedItems(source, edge);
       if (items.length === 0) return;
-      const current = map.get(edge.target) || [];
+      const current = map.get(targetId) || [];
       const merged = new Set([...current, ...items]);
-      map.set(edge.target, Array.from(merged));
+      map.set(targetId, Array.from(merged));
     });
 
     // Second pass: let conveyor lifts pass through their incoming items even if not explicitly set
     edges.forEach((edge) => {
-      const source = nodeById.get(edge.source);
+      const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualSourceId as string | undefined;
+      const virtualTargetId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualTargetId as string | undefined;
+      const sourceId = virtualSourceId || edge.source;
+      const targetId = virtualTargetId || edge.target;
+      const source = nodeById.get(sourceId);
       if (!source || source.type !== "conveyorLift") return;
       const sourceData = source.data as Record<string, unknown>;
       const hasExplicitItem = Boolean(sourceData.transportingItem);
       if (hasExplicitItem) return;
       const incomingItems = map.get(source.id) || [];
       if (incomingItems.length === 0) return;
-      const current = map.get(edge.target) || [];
+      const current = map.get(targetId) || [];
       const merged = new Set([...current, ...incomingItems]);
-      map.set(edge.target, Array.from(merged));
+      map.set(targetId, Array.from(merged));
     });
 
     return map;
@@ -1735,11 +1783,14 @@ function AppContent() {
       .map((node) => {
         const data = node.data as Record<string, unknown>;
         const nodeLayer = (data.layer as number) || 1;
-        const incomingItems = incomingItemsByNode.get(node.id) || [];
-        const splitterOutputs = splitterAutoOutputsById.get(node.id);
-        const goalConnections = goalConnectionsById.get(node.id);
         const stackActiveId = data.stackActiveId as string | undefined;
         const stackCount = data.stackCount as number | undefined;
+        const incomingItems =
+          stackActiveId && stackCount && stackCount > 1
+            ? incomingItemsByNode.get(stackActiveId) || []
+            : incomingItemsByNode.get(node.id) || [];
+        const splitterOutputs = splitterAutoOutputsById.get(node.id);
+        const goalConnections = goalConnectionsById.get(node.id);
         const stackActiveData =
           stackActiveId && stackCount && stackCount > 1
             ? (nodeById.get(stackActiveId)?.data as
@@ -1952,7 +2003,7 @@ function AppContent() {
       <Box sx={{ flexGrow: 1, position: "relative" }}>
         {/* Header */}
         <Header
-          nodes={nodes}
+          nodesCount={nodes.length}
           calcEnabled={calcEnabled}
           setCalcEnabled={setCalcEnabled}
           handleCalculate={handleCalculate}
@@ -1968,8 +2019,6 @@ function AppContent() {
           handleClearAll={handleClearAll}
           uiSettings={uiSettings}
           setUiSettings={setUiSettings}
-          appVersion={appVersion}
-          changelogEntries={changelogEntries}
           repoUrl={repoUrl}
         />
 

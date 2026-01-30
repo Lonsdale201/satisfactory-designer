@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { Node, Edge, Connection, addEdge } from "@xyflow/react";
 import { getEdgeLabel } from "../utils/edgeLabelUtils";
-import resourcesData from "../data/resources.json";
 import buildingsData from "../data/buildings.json";
 import itemsData from "../data/items.json";
 
@@ -53,13 +52,6 @@ function inferType(
   const node = nodes.find((n) => n.id === nodeId);
   if (!node) return null;
 
-  if (node.type === "resource") {
-    const resourceId = (node.data as Record<string, unknown>)
-      ?.resourceId as string;
-    const resource = resourcesData.resources.find((r) => r.id === resourceId);
-    return resource?.state === "fluid" ? "pipe" : "conveyor";
-  }
-
   if (node.type === "building") {
     const buildingId = (node.data as Record<string, unknown>)?.buildingId as
       | string
@@ -97,13 +89,6 @@ function resolveDefaultType(
   direction: "input" | "output",
 ): "pipe" | "conveyor" | null {
   if (!node) return null;
-
-  if (node.type === "resource") {
-    const resourceId = (node.data as Record<string, unknown>)
-      ?.resourceId as string;
-    const resource = resourcesData.resources.find((r) => r.id === resourceId);
-    return resource?.state === "fluid" ? "pipe" : "conveyor";
-  }
 
   if (node.type === "building") {
     const buildingId = (node.data as Record<string, unknown>)?.buildingId as
@@ -144,9 +129,6 @@ function getIncomingItem(
   if (!sourceNode) return undefined;
   const sourceData = sourceNode.data as Record<string, unknown>;
 
-  if (sourceNode.type === "resource") {
-    return sourceData.resourceId as string | undefined;
-  }
   if (sourceNode.type === "building") {
     return sourceData.outputItem as string | undefined;
   }
@@ -221,26 +203,6 @@ export function useConnectionHandling({
       )
         return;
 
-      // Auto-set Miner output when connected from Resource Node
-      if (sourceNode?.type === "resource" && targetNode?.type === "building") {
-        const targetData = targetNode.data as Record<string, unknown>;
-        const targetBuildingId = targetData.buildingId as string;
-        if (targetBuildingId?.startsWith("miner_")) {
-          const sourceData = sourceNode.data as Record<string, unknown>;
-          const resourceId = sourceData.resourceId as string;
-          if (resourceId && !targetData.outputItem) {
-            setNodes((nds) =>
-              nds.map((n) => {
-                if (n.id === resolvedParams.target) {
-                  return { ...n, data: { ...n.data, outputItem: resourceId } };
-                }
-                return n;
-              }),
-            );
-          }
-        }
-      }
-
       // Auto-set production building output based on incoming item
       if (targetNode?.type === "building") {
         const sourceData = (sourceNode?.data as Record<string, unknown>) || {};
@@ -248,9 +210,7 @@ export function useConnectionHandling({
         const targetBuildingId = targetData.buildingId as string;
 
         let incomingItem: string | undefined;
-        if (sourceNode?.type === "resource") {
-          incomingItem = sourceData.resourceId as string | undefined;
-        } else if (sourceNode?.type === "building") {
+        if (sourceNode?.type === "building") {
           incomingItem = sourceData.outputItem as string | undefined;
         } else if (sourceNode?.type === "transport") {
           incomingItem = sourceData.deliveryItem as string | undefined;

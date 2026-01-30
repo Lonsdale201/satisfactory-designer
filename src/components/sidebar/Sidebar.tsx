@@ -71,7 +71,6 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 interface SidebarProps {
   onAddNode: (
     type:
-      | "resource"
       | "building"
       | "group"
       | "transport"
@@ -190,16 +189,22 @@ function Sidebar({
     "Thermal Propulsion Rocket",
   ];
 
-  const handleAddResourceNode = () => {
-    onAddNode("resource");
-  };
-
   const handleAddBuildingNode = (building: Building) => {
+    const hasPurity = [
+      "miner_mk1",
+      "miner_mk2",
+      "miner_mk3",
+      "oil_extractor",
+      "resource_well_extractor",
+    ].includes(building.id);
     onAddNode("building", {
       buildingId: building.id,
       production: building.defaultProduction,
       powerUsage: building.category === "storage" ? 0 : building.defaultPower,
       iconUrl: getBuildingIconUrl(building.id),
+      outputItem: building.fixedOutput || "",
+      purity: hasPurity ? "normal" : "",
+      inputCount: building.inputs ?? 0,
     });
   };
 
@@ -336,44 +341,6 @@ function Sidebar({
           </Box>
 
           <List dense>
-            {/* Resource Node */}
-            <ListItem disablePadding>
-              <ListItemButton
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    "application/satisplanner",
-                    JSON.stringify({
-                      type: "resource",
-                      data: {},
-                    }),
-                  );
-                  e.dataTransfer.effectAllowed = "move";
-                }}
-                onClick={handleAddResourceNode}
-                sx={{
-                  "&:hover": { bgcolor: "#16213e" },
-                  cursor: "grab",
-                  "&:active": { cursor: "grabbing" },
-                }}
-              >
-                <ListItemIcon>
-                  <Icons.Terrain sx={{ color: "#f39c12" }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Resource Node"
-                  secondary="Drag or click to add"
-                  primaryTypographyProps={{ color: "#fff", fontSize: "0.9rem" }}
-                  secondaryTypographyProps={{
-                    color: "#666",
-                    fontSize: "0.75rem",
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-
-            <Divider sx={{ my: 1, borderColor: "#333" }} />
-
             <Box sx={{ px: 2, pb: 1 }}>
               <Box
                 sx={{
@@ -627,7 +594,6 @@ function Sidebar({
                     }}
                   >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Box sx={{ fontSize: 20 }}>🎯</Box>
                       <Typography
                         variant="body2"
                         sx={{
@@ -659,6 +625,7 @@ function Sidebar({
                     "miner_mk3",
                     "water_extractor",
                     "oil_extractor",
+                    "resource_well_extractor",
                   ],
                   isOpen: extractorsOpen,
                   setOpen: setExtractorsOpen,

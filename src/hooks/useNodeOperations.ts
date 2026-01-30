@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Node, Edge } from '@xyflow/react';
 
-export type NodeType = 'resource' | 'building' | 'group' | 'transport' | 'smartSplitter' | 'goal' | 'conveyorLift';
+export type NodeType = 'building' | 'group' | 'transport' | 'smartSplitter' | 'goal' | 'conveyorLift';
 
 interface UseNodeOperationsProps {
   nodeIdCounter: number;
@@ -25,24 +25,6 @@ interface UseNodeOperationsReturn {
 }
 
 // Default node data factories
-function createResourceNodeData(currentLayer: number) {
-  return {
-    label: 'Resource Node',
-    resourceId: '',
-    purity: 'normal',
-    outputRate: 60,
-    iconUrl: '',
-    customLabel: '',
-    conveyorMk: 1,
-    pipeMk: 1,
-    theme: 'dark',
-    collapsed: false,
-    hasInput: false,
-    hasOutput: true,
-    layer: currentLayer,
-  };
-}
-
 function createGroupNodeData(currentLayer: number) {
   return {
     label: 'Production line',
@@ -117,11 +99,14 @@ function createBuildingNodeData(currentLayer: number, data?: Partial<Record<stri
     buildingId: (data?.buildingId as string) || '',
     production: (data?.production as number) || 30,
     customProduction: false,
-    outputItem: '',
+    outputItem: (data?.outputItem as string) || '',
     powerUsage: (data?.powerUsage as number) || 4,
+    purity: (data?.purity as string) || '',
     iconUrl: (data?.iconUrl as string) || '',
     customLabel: '',
     storedItem: '',
+    selectedRecipeIndex: 0,
+    selectedAltIndex: null,
     conveyorMk: 1,
     pipeMk: 1,
     theme: (data?.theme as string) || '',
@@ -129,7 +114,7 @@ function createBuildingNodeData(currentLayer: number, data?: Partial<Record<stri
     collapsed: false,
     hasInput: true,
     hasOutput: true,
-    inputCount: 1,
+    inputCount: (data?.inputCount as number) ?? 1,
     layer: currentLayer,
   };
 }
@@ -150,9 +135,6 @@ export function useNodeOperations({
 
       let nodeData: Record<string, unknown>;
       switch (type) {
-        case 'resource':
-          nodeData = createResourceNodeData(currentLayer);
-          break;
         case 'group':
           nodeData = createGroupNodeData(currentLayer);
           break;

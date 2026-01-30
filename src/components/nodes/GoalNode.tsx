@@ -50,6 +50,7 @@ interface GoalNodeProps {
     targetRate: number;
     customLabel?: string;
     collapsed?: boolean;
+    isGhost?: boolean;
   };
 }
 
@@ -57,6 +58,7 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
   const ui = useUiSettings();
   const selectedItem = items.find((i) => i.id === data.itemId);
   const isCollapsed = data.collapsed ?? false;
+  const isGhost = data.isGhost ?? false;
   const targetRate = data.targetRate || selectedItem?.defaultProduction || 1;
   const iconUrl = selectedItem ? findItemIconUrl(selectedItem) : "";
   const headerLabel = (
@@ -93,24 +95,37 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
     return missingItems.length === 0;
   }, [selectedItem, missingItems]);
 
+  const ghostStyles = isGhost
+    ? {
+        opacity: 0.6,
+        pointerEvents: "none" as const,
+      }
+    : {};
+
   return (
     <>
       <div
         style={{
           minWidth: isCollapsed ? 180 : 240,
-          backgroundColor: "#1a1a2e",
-          border: `3px solid ${goalAchieved ? "#22c55e" : "#eab308"}`,
+          backgroundColor: isGhost ? "transparent" : "#1a1a2e",
+          border: isGhost
+            ? `2px dashed ${goalAchieved ? "rgba(34, 197, 94, 0.6)" : "rgba(234, 179, 8, 0.6)"}`
+            : `3px solid ${goalAchieved ? "#22c55e" : "#eab308"}`,
           borderRadius: 12,
           fontFamily: "Inter, sans-serif",
-          animation: goalAchieved
-            ? "goal-achieved 2s ease-in-out infinite"
-            : "goal-glow 2s ease-in-out infinite",
+          animation: isGhost
+            ? "none"
+            : goalAchieved
+              ? "goal-achieved 2s ease-in-out infinite"
+              : "goal-glow 2s ease-in-out infinite",
           position: "relative",
           overflow: "visible",
+          ...ghostStyles,
         }}
       >
         {/* Status Badge */}
-        <div
+        {!isGhost && (
+          <div
           style={{
             position: "absolute",
             top: -12,
@@ -134,6 +149,7 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
         >
           {goalAchieved ? "✓" : "⚑"}
         </div>
+        )}
 
         {/* Input Handles */}
         {Array.from({ length: inputCount }).map((_, index) => (
@@ -160,17 +176,19 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
         <div
           data-no-panel="true"
           style={{
-            background: `linear-gradient(135deg, ${goalAchieved ? "#22c55e" : "#eab308"} 0%, ${goalAchieved ? "#16a34a" : "#ca8a04"} 100%)`,
-            padding: "8px 14px",
+            background: isGhost ? "transparent" : `linear-gradient(135deg, ${goalAchieved ? "#22c55e" : "#eab308"} 0%, ${goalAchieved ? "#16a34a" : "#ca8a04"} 100%)`,
+            padding: isGhost ? "6px 12px" : "8px 14px",
             display: "flex",
             alignItems: "center",
             gap: 10,
-            borderRadius: isCollapsed ? "9px" : "9px 9px 0 0",
-            cursor: "pointer",
+            borderRadius: isGhost ? "9px" : isCollapsed ? "9px" : "9px 9px 0 0",
+            cursor: isGhost ? "default" : "pointer",
+            borderBottom: isGhost
+              ? `1px dashed ${goalAchieved ? "rgba(34, 197, 94, 0.4)" : "rgba(234, 179, 8, 0.4)"}`
+              : "none",
           }}
         >
-          <span style={{ fontSize: 18 }}>🎯</span>
-          {!ui.hideAllImages && iconUrl && (
+          {!ui.hideAllImages && iconUrl && !isGhost && (
             <img
               src={iconUrl}
               alt=""
@@ -186,11 +204,15 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
           )}
           <span
             style={{
-              fontSize: 14,
+              fontSize: isGhost ? 12 : 14,
               fontWeight: 700,
-              color: "#1a1a2e",
+              color: isGhost
+                ? goalAchieved
+                  ? "rgba(34, 197, 94, 0.85)"
+                  : "rgba(234, 179, 8, 0.85)"
+                : "#1a1a2e",
               flex: 1,
-              textShadow: "0 1px 2px rgba(255,255,255,0.2)",
+              textShadow: isGhost ? "none" : "0 1px 2px rgba(255,255,255,0.2)",
             }}
           >
             {headerLabel}
@@ -199,7 +221,11 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
             style={{
               fontSize: 13,
               fontWeight: 700,
-              color: "#1a1a2e",
+              color: isGhost
+                ? goalAchieved
+                  ? "rgba(34, 197, 94, 0.85)"
+                  : "rgba(234, 179, 8, 0.85)"
+                : "#1a1a2e",
               background: "rgba(255,255,255,0.3)",
               padding: "2px 8px",
               borderRadius: 999,
@@ -209,8 +235,51 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
           </span>
         </div>
 
+        {isGhost && (
+          <div
+            style={{
+              padding: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            {!ui.hideAllImages && iconUrl && (
+              <img
+                src={iconUrl}
+                alt=""
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  objectFit: "cover",
+                  opacity: 0.6,
+                  border: goalAchieved
+                    ? "1px dashed rgba(34, 197, 94, 0.4)"
+                    : "1px dashed rgba(234, 179, 8, 0.4)",
+                }}
+              />
+            )}
+            <span
+              style={{
+                fontSize: 10,
+                color: goalAchieved
+                  ? "rgba(34, 197, 94, 0.7)"
+                  : "rgba(234, 179, 8, 0.7)",
+                textTransform: "uppercase",
+                letterSpacing: "0.4px",
+                fontWeight: 700,
+              }}
+            >
+              Project Parts
+            </span>
+          </div>
+        )}
+
         {/* Body */}
-        {!isCollapsed && (
+        {!isCollapsed && !isGhost && (
           <div style={{ padding: 12 }}>
             {/* Goal Status */}
             <div

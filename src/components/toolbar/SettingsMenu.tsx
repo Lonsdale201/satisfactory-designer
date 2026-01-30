@@ -5,7 +5,6 @@ export interface UiSettings {
   alwaysShowEdgeLabels: boolean;
   showPower: boolean;
   showInventory: boolean;
-  showResourceImageInBody: boolean;
   showProductionEfficiency: boolean;
   hideAllImages: boolean;
   hideIoStats: boolean;
@@ -86,21 +85,6 @@ const SettingsMenu = memo(
           />
         </MenuItem>
         <MenuItem>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={uiSettings.showResourceImageInBody}
-                onChange={(e) =>
-                  setUiSettings((s) => ({
-                    ...s,
-                    showResourceImageInBody: e.target.checked,
-                  }))
-                }
-              />
-            }
-            label="Show resource image in body"
-          />
         </MenuItem>
         <MenuItem>
           <FormControlLabel

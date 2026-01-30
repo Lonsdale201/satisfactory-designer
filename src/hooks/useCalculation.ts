@@ -46,35 +46,24 @@ export function useCalculation({
       buildings,
     });
 
-    // Build a map of stackId -> parent status for propagation to stacked children
-    const stackParentStatus = new Map<string, { status: string | null; supply: number; demand: number }>();
-    currentNodes.forEach(node => {
-      const data = node.data as Record<string, unknown>;
-      const stackCount = data.stackCount as number | undefined;
-      const stackId = data.stackId as string | undefined;
-      if (stackCount && stackCount > 1 && stackId && nodeStatuses[node.id]) {
-        stackParentStatus.set(stackId, nodeStatuses[node.id]);
-      }
-    });
-
     // Update nodes with calculated status, propagating to stacked children
     setNodes(nds => nds.map(node => {
       const data = node.data as Record<string, unknown>;
       const isStacked = data.isStacked as boolean | undefined;
-      const stackId = data.stackId as string | undefined;
-
-      // If this is a stacked child, use the parent's status
-      if (isStacked && stackId && stackParentStatus.has(stackId)) {
-        const parentStatus = stackParentStatus.get(stackId)!;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            calcStatus: parentStatus.status,
-            calcSupply: parentStatus.supply,
-            calcDemand: parentStatus.demand,
-          }
-        };
+      if (isStacked) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              calcStatus: nodeStatuses[node.id]?.status || null,
+              calcSupply: nodeStatuses[node.id]?.supply || 0,
+              calcDemand: nodeStatuses[node.id]?.demand || 0,
+              storageFlow: nodeStatuses[node.id]?.storageFlow,
+              calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
+              calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
+              calcDisconnected: nodeStatuses[node.id]?.disconnected || false,
+            }
+          };
       }
 
       // Normal node or stack parent
@@ -86,6 +75,9 @@ export function useCalculation({
           calcSupply: nodeStatuses[node.id]?.supply || 0,
           calcDemand: nodeStatuses[node.id]?.demand || 0,
           storageFlow: nodeStatuses[node.id]?.storageFlow,
+          calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
+          calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
+          calcDisconnected: nodeStatuses[node.id]?.disconnected || false,
         }
       };
     }));

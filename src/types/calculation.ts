@@ -16,6 +16,9 @@ export interface NodeStatus {
   supply: number;
   demand: number;
   storageFlow?: StorageFlow;
+  mismatchIncoming?: boolean;
+  mismatchOutgoing?: boolean;
+  disconnected?: boolean;
 }
 
 export type NodeStatusMap = Record<string, NodeStatus>;

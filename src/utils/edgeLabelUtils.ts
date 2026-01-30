@@ -1,11 +1,6 @@
 import { Node } from "@xyflow/react";
 import itemsData from "../data/items.json";
-import {
-  CONVEYOR_RATES,
-  PIPE_RATES,
-  PURITY_RATES,
-  MINER_MULTIPLIERS,
-} from "../constants";
+import { CONVEYOR_RATES, PIPE_RATES } from "../constants";
 
 /**
  * Get the label for an edge based on source and target nodes
@@ -43,26 +38,6 @@ export function getEdgeLabel(
   const mkRate = isPipe
     ? `${PIPE_RATES[pipeMk as keyof typeof PIPE_RATES]} m³/min`
     : `${CONVEYOR_RATES[conveyorMk as keyof typeof CONVEYOR_RATES]}/min`;
-
-  if (sourceNode.type === "resource") {
-    const resource = itemsData.items.find((i) => i.id === data.resourceId);
-    const purity = (data.purity as string) || "normal";
-    const purityKey =
-      purity === "impure" ? "impure" : purity === "pure" ? "pure" : "normal";
-    const rate = PURITY_RATES[purityKey as keyof typeof PURITY_RATES] || 60;
-    const targetData = (targetNode?.data as Record<string, unknown>) || {};
-    const targetBuildingId = (targetData.buildingId as string) || "";
-    const targetConveyorMk = (targetData.conveyorMk as number) || 1;
-    const targetPipeMk = (targetData.pipeMk as number) || 1;
-    const mkMultiplier = { 1: 1, 2: 2, 3: 4 } as const;
-    const pipeMultiplier = { 1: 1, 2: 2, 3: 3 } as const;
-    const minerMultiplier =
-      MINER_MULTIPLIERS[targetBuildingId as keyof typeof MINER_MULTIPLIERS];
-    const actualRate = isPipe
-      ? rate * pipeMultiplier[targetPipeMk as 1 | 2 | 3]
-      : rate * (minerMultiplier ?? mkMultiplier[targetConveyorMk as 1 | 2 | 3]);
-    return resource ? `${resource.name} (${rate}/min) ${actualRate}/min` : "";
-  }
 
   if (sourceNode.type === "building") {
     const item = itemsData.items.find((i) => i.id === data.outputItem);

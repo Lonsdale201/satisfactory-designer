@@ -138,7 +138,7 @@ export function useStackingLogic({
       })
     );
 
-    // Redirect edges from stacked children to parent
+    // Redirect child edges to parent, but remember the original child in edge data
     setEdges((eds) =>
       eds.map((edge) => {
         const sourceInStack = nodesToStack.some((n) => n.id === edge.source);
@@ -148,23 +148,15 @@ export function useStackingLogic({
 
         if (!sourceIsChild && !targetIsChild) return edge;
 
-        const existingOriginal = (edge.data as Record<string, unknown> | undefined)?.stackOriginal as
-          | { source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null; stackId?: string }
-          | undefined;
-
-        const original = existingOriginal || {
-          source: edge.source,
-          target: edge.target,
-          sourceHandle: edge.sourceHandle,
-          targetHandle: edge.targetHandle,
-          stackId,
-        };
-
         return {
           ...edge,
           source: sourceIsChild ? parentNode.id : edge.source,
           target: targetIsChild ? parentNode.id : edge.target,
-          data: { ...edge.data, stackOriginal: original },
+          data: {
+            ...edge.data,
+            ...(sourceIsChild ? { virtualSourceId: edge.source } : {}),
+            ...(targetIsChild ? { virtualTargetId: edge.target } : {}),
+          },
         };
       })
     );
@@ -238,54 +230,36 @@ export function useStackingLogic({
       })
     );
 
-    // Duplicate edges for all unstacked nodes
-    // Each node in the stack should get its own copy of incoming/outgoing edges
-    setEdges((eds) => {
-      const newEdges: Edge[] = [];
-      const edgesToRemove = new Set<string>();
-
-      eds.forEach((edge) => {
+    // Restore edges back to their original child endpoints
+    setEdges((eds) =>
+      eds.map((edge) => {
         const edgeData = edge.data as Record<string, unknown> | undefined;
-        const original = edgeData?.stackOriginal as
-          | { source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null; stackId?: string }
-          | undefined;
+        const virtualSourceId = edgeData?.virtualSourceId as string | undefined;
+        const virtualTargetId = edgeData?.virtualTargetId as string | undefined;
 
-        // If this edge was redirected during stacking and belongs to this stack
-        if (original && original.stackId === stackId) {
-          // Mark the redirected edge for removal
-          edgesToRemove.add(edge.id);
+        const restoreSource =
+          edge.source === parentNode.id &&
+          virtualSourceId &&
+          stackedNodeIds.includes(virtualSourceId);
+        const restoreTarget =
+          edge.target === parentNode.id &&
+          virtualTargetId &&
+          stackedNodeIds.includes(virtualTargetId);
 
-          // Create edges for ALL stacked nodes
-          stackedNodeIds.forEach((nodeId, index) => {
-            const newEdge: Edge = {
-              ...edge,
-              id: `${edge.id}-unstacked-${nodeId}-${index}`,
-              source: edge.source === parentNode.id ? nodeId : edge.source,
-              target: edge.target === parentNode.id ? nodeId : edge.target,
-              data: { ...edgeData, stackOriginal: undefined },
-            };
-            newEdges.push(newEdge);
-          });
-        } else if (edge.source === parentNode.id || edge.target === parentNode.id) {
-          // Edge directly connected to parent (not from stacking) - keep for parent only
-          // but also create copies for other nodes
-          stackedNodeIds.forEach((nodeId, index) => {
-            if (nodeId === parentNode.id) return; // Keep original for parent
-            const newEdge: Edge = {
-              ...edge,
-              id: `${edge.id}-copy-${nodeId}-${index}`,
-              source: edge.source === parentNode.id ? nodeId : edge.source,
-              target: edge.target === parentNode.id ? nodeId : edge.target,
-              data: { ...edgeData },
-            };
-            newEdges.push(newEdge);
-          });
-        }
-      });
+        if (!restoreSource && !restoreTarget) return edge;
 
-      // Filter out removed edges and add new ones
-      return [...eds.filter(e => !edgesToRemove.has(e.id)), ...newEdges];
-    });
+        const nextData = { ...(edge.data as Record<string, unknown>) };
+        if (restoreSource) delete nextData.virtualSourceId;
+        if (restoreTarget) delete nextData.virtualTargetId;
+
+        return {
+          ...edge,
+          source: restoreSource ? virtualSourceId : edge.source,
+          target: restoreTarget ? virtualTargetId : edge.target,
+          data: nextData,
+        };
+      })
+    );
 
     setSelectedNodesForStack([]);
 

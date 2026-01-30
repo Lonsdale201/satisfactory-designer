@@ -1,13 +1,5 @@
 import { Node, Edge } from '@xyflow/react';
 
-// Resource types
-export interface Resource {
-  id: string;
-  name: string;
-  icon: string;
-  state?: 'solid' | 'fluid';
-}
-
 export interface PurityType {
   id: string;
   name: string;
@@ -39,32 +31,28 @@ export interface ItemRequirement {
   amount: number;
 }
 
+export interface ItemRecipe {
+  name?: string;
+  inputs: ItemRequirement[];
+  byproducts?: ItemRequirement[];
+}
+
 export interface Item {
   id: string;
   name: string;
   category: string;
   icon: string;
   stackSize?: number;
+  recipes?: ItemRecipe[];
+  defaultRecipeIndex?: number;
   inputCount?: number;
   defaultProduction?: number;
   producers?: string[];
   requires?: ItemRequirement[];
   alternateRequires?: ItemRequirement[][];
-}
-
-// Node data types with index signature for React Flow compatibility
-export interface ResourceNodeData {
-  [key: string]: unknown;
-  label: string;
-  resourceId: string;
-  purity: string;
-  outputRate: number;
-  iconUrl?: string;
-  customLabel?: string;
-  conveyorMk?: 1 | 2 | 3;
-  pipeMk?: 1 | 2 | 3;
-  theme?: string;
-  showIo?: boolean;
+  alternateOutputRates?: number[];
+  defaultProducer?: string;
+  alternateProducers?: string[];
 }
 
 export interface BuildingNodeData {
@@ -75,9 +63,12 @@ export interface BuildingNodeData {
   customProduction: boolean;
   outputItem: string;
   powerUsage: number;
+  purity?: string;
   iconUrl?: string;
   customLabel?: string;
   storedItem?: string;
+  selectedRecipeIndex?: number;
+  selectedAltIndex?: number | null;
   conveyorMk?: 1 | 2 | 3;
   pipeMk?: 1 | 2 | 3;
   theme?: string;
@@ -142,13 +133,12 @@ export interface ConveyorLiftNodeData {
 }
 
 // Custom node types
-export type ResourceNode = Node<ResourceNodeData, 'resource'>;
 export type BuildingNode = Node<BuildingNodeData, 'building'>;
 export type GroupNode = Node<GroupNodeData, 'group'>;
 export type TransportNode = Node<TransportNodeData, 'transport'>;
 export type SmartSplitterNode = Node<SmartSplitterNodeData, 'smartSplitter'>;
 export type ConveyorLiftNode = Node<ConveyorLiftNodeData, 'conveyorLift'>;
-export type AppNode = ResourceNode | BuildingNode | GroupNode | TransportNode | SmartSplitterNode | ConveyorLiftNode;
+export type AppNode = BuildingNode | GroupNode | TransportNode | SmartSplitterNode | ConveyorLiftNode;
 
 // Edge type
 export type AppEdge = Edge;

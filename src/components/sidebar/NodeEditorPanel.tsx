@@ -17,16 +17,29 @@ import {
 import * as MuiIcons from '@mui/icons-material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { Node } from '@xyflow/react';
-import { Building, Item, PurityType, Resource } from '../../types';
+import { Building, Item } from '../../types';
 import buildingsData from '../../data/buildings.json';
 import itemsData from '../../data/items.json';
-import resourcesData from '../../data/resources.json';
 import { PROJECT_ASSEMBLY_ITEM_IDS } from '../nodes/GoalNode';
 
 const buildings: Building[] = buildingsData.buildings as Building[];
 const items: Item[] = itemsData.items;
-const resources: Resource[] = resourcesData.resources;
-const purityTypes: PurityType[] = resourcesData.purityTypes;
+const EXTRACTOR_PURITY_RATES: Record<
+  string,
+  { impure: number; normal: number; pure: number }
+> = {
+  miner_mk1: { impure: 30, normal: 60, pure: 120 },
+  miner_mk2: { impure: 60, normal: 120, pure: 240 },
+  miner_mk3: { impure: 120, normal: 240, pure: 480 },
+  oil_extractor: { impure: 60, normal: 120, pure: 240 },
+  resource_well_extractor: { impure: 45, normal: 90, pure: 180 },
+};
+
+const PURITY_OPTIONS = [
+  { id: 'impure', label: 'Impure' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'pure', label: 'Pure' },
+];
 
 const groupColors = [
   { label: 'Blue', value: '#0ea5e9' },
@@ -74,16 +87,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
 
   const nodeData = node?.data as Record<string, unknown> | undefined;
 
-  const selectedResource = useMemo(() => {
-    if (!node || node.type !== 'resource') return null;
-    return resources.find(r => r.id === nodeData?.resourceId);
-  }, [node, nodeData?.resourceId]);
-
-  const selectedPurity = useMemo(() => {
-    if (!node || node.type !== 'resource') return null;
-    return purityTypes.find(p => p.id === nodeData?.purity);
-  }, [node, nodeData?.purity]);
-
   const selectedBuilding = useMemo(() => {
     if (!node || node.type !== 'building') return null;
     return buildings.find(b => b.id === nodeData?.buildingId);
@@ -98,6 +101,13 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     if (!node || node.type !== 'building') return null;
     return items.find(i => i.id === nodeData?.storedItem);
   }, [node, nodeData?.storedItem]);
+
+  const storageItems = useMemo(() => {
+    if (selectedBuilding?.id === 'fluid_buffer') {
+      return items.filter((item) => item.category === 'fluid');
+    }
+    return items;
+  }, [selectedBuilding?.id]);
 
   const selectedDeliveryItem = useMemo(() => {
     if (!node || node.type !== 'transport') return null;
@@ -130,6 +140,9 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     if (selectedBuilding.fixedOutput) {
       return items.filter((item) => item.id === selectedBuilding.fixedOutput);
     }
+    if (selectedBuilding.category === 'extraction' && selectedBuilding.outputs?.length) {
+      return items.filter((item) => selectedBuilding.outputs.includes(item.id));
+    }
     const inputs = selectedBuilding.inputs ?? 1;
     const outputTypes = selectedBuilding.outputTypes ?? ['conveyor'];
     const hasPipeOutput = outputTypes.includes('pipe');
@@ -137,6 +150,28 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     // Special filtering for Smelter and Foundry
     const smelterAllowedItems = ['caterium_ingot', 'copper_ingot', 'iron_ingot', 'aluminum_ingot'];
     const foundryAllowedItems = ['steel_ingot', 'aluminum_ingot'];
+
+    if (selectedBuilding.id === 'refinery') {
+      const refineryAllowed = new Set([
+        'alumina_solution',
+        'aluminum_scrap',
+        'fuel',
+        'ionized_fuel',
+        'liquid_biofuel',
+        'petroleum_coke',
+        'plastic',
+        'polyester_fabric',
+        'residual_fuel',
+        'residual_plastic',
+        'residual_rubber',
+        'rubber',
+        'smokeless_powder',
+        'sulfuric_acid',
+        'turbofuel',
+        'wet_concrete',
+      ]);
+      return items.filter((item) => refineryAllowed.has(item.id));
+    }
 
     return items.filter((item) => {
       // Exclude fluids and ores for smelter and foundry
@@ -184,12 +219,13 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     return [selectedBuilding];
   }, [selectedBuilding]);
 
-  const displayRate = selectedPurity
-    ? 60 * selectedPurity.multiplier
-    : (nodeData?.outputRate as number) || 60;
-
   const isCollapsed = Boolean(nodeData?.collapsed);
   const customProduction = Boolean(nodeData?.customProduction);
+  const extractorPurityRates = selectedBuilding
+    ? EXTRACTOR_PURITY_RATES[selectedBuilding.id]
+    : undefined;
+  const hasExtractorPurity = Boolean(extractorPurityRates);
+  const selectedPurity = (nodeData?.purity as string) || 'normal';
   const hasPipe = Boolean(
     selectedBuilding?.inputTypes?.includes('pipe') ||
     selectedBuilding?.outputTypes?.includes('pipe'),
@@ -198,24 +234,23 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     selectedBuilding?.inputTypes?.includes('conveyor') ||
     selectedBuilding?.outputTypes?.includes('conveyor'),
   );
+  const showOutputSelector =
+    selectedBuilding?.category !== 'storage' &&
+    !(selectedBuilding?.category === 'extraction' && selectedBuilding?.fixedOutput);
 
-  const handleResourceChange = useCallback((_: unknown, newValue: Resource | null) => {
-    if (!newValue) return;
-    dispatchChange('resourceId', newValue.id);
-    const purity = purityTypes.find(p => p.id === nodeData?.purity);
-    const baseRate = 60;
-    const outputRate = baseRate * (purity?.multiplier || 1);
-    dispatchChange('outputRate', outputRate);
-  }, [dispatchChange, nodeData?.purity]);
-
-  const handlePurityChange = useCallback((event: SelectChangeEvent) => {
-    const value = event.target.value as string;
-    dispatchChange('purity', value);
-    const purity = purityTypes.find(p => p.id === value);
-    const baseRate = 60;
-    const outputRate = baseRate * (purity?.multiplier || 1);
-    dispatchChange('outputRate', outputRate);
-  }, [dispatchChange]);
+  const handleExtractorPurityChange = useCallback(
+    (event: SelectChangeEvent) => {
+      const value = event.target.value as string;
+      dispatchChange('purity', value);
+      if (!selectedBuilding) return;
+      const rates = EXTRACTOR_PURITY_RATES[selectedBuilding.id];
+      if (!rates) return;
+      if (!customProduction) {
+        dispatchChange('production', rates[value as keyof typeof rates]);
+      }
+    },
+    [dispatchChange, selectedBuilding, customProduction],
+  );
 
   const handleBuildingChange = useCallback((_: unknown, newValue: Building | null) => {
     if (!newValue) return;
@@ -223,20 +258,34 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     const isToMiner = newValue.id.startsWith('miner_');
 
     dispatchChange('buildingId', newValue.id);
-    dispatchChange('production', newValue.defaultProduction);
+    const purityRate =
+      EXTRACTOR_PURITY_RATES[newValue.id]?.[
+        ((nodeData?.purity as string) || 'normal') as 'impure' | 'normal' | 'pure'
+      ];
+
+    dispatchChange('production', purityRate ?? newValue.defaultProduction);
     dispatchChange('powerUsage', newValue.defaultPower);
+    if (EXTRACTOR_PURITY_RATES[newValue.id]) {
+      dispatchChange('purity', (nodeData?.purity as string) || 'normal');
+    } else {
+      dispatchChange('purity', '');
+    }
 
     // Don't reset outputItem when switching between miners
     if (!(isFromMiner && isToMiner)) {
       dispatchChange('outputItem', newValue.fixedOutput || '');
     }
 
-    dispatchChange('inputCount', newValue.inputs || 1);
-  }, [dispatchChange, selectedBuilding]);
+    dispatchChange('inputCount', newValue.inputs ?? 0);
+  }, [dispatchChange, selectedBuilding, nodeData?.purity]);
 
-  const handleProductionSelect = useCallback((event: SelectChangeEvent) => {
-    dispatchChange('production', Number(event.target.value));
-  }, [dispatchChange]);
+  const handleProductionRateChange = useCallback(
+    (_: unknown, newValue: number | null) => {
+      if (newValue === null || Number.isNaN(newValue)) return;
+      dispatchChange('production', Number(newValue));
+    },
+    [dispatchChange],
+  );
 
   const handleCustomProductionChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(event.target.value, 10) || 0;
@@ -248,6 +297,12 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     if (newValue?.defaultProduction) {
       dispatchChange('production', newValue.defaultProduction);
     }
+    if (newValue?.recipes && newValue.recipes.length > 0) {
+      dispatchChange('selectedRecipeIndex', newValue.defaultRecipeIndex ?? 0);
+    } else {
+      dispatchChange('selectedRecipeIndex', 0);
+    }
+    dispatchChange('selectedAltIndex', null);
   }, [dispatchChange]);
 
   const handlePowerChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,7 +336,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            {node?.type === 'resource' && (selectedResource?.name || 'Resource Node')}
             {node?.type === 'building' && (selectedBuilding?.name || 'Building')}
             {node?.type === 'group' && ((nodeData?.label as string) || 'Production line')}
             {node?.type === 'transport' && ((nodeData?.label as string) || 'Transport')}
@@ -411,83 +465,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
             </FormControl>
           )}
         </Box>
-
-        {node?.type === 'resource' && (
-          <Box
-            component="fieldset"
-            sx={{
-              border: '1px solid #1f2937',
-              borderRadius: 1,
-              p: 1.5,
-              m: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1.5,
-            }}
-          >
-            <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
-              Resource Settings
-            </Typography>
-
-            <Autocomplete
-              size="small"
-              options={resources}
-              getOptionLabel={(option) => option.name}
-              value={selectedResource || null}
-              onChange={handleResourceChange}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Resource"
-                  variant="outlined"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: '#0f172a',
-                      color: '#fff',
-                    },
-                    '& .MuiInputLabel-root': { color: '#9ca3af' },
-                  }}
-                />
-              )}
-            />
-
-            <FormControl fullWidth size="small">
-              <InputLabel sx={{ color: '#aaa' }}>Purity</InputLabel>
-              <Select
-                value={(nodeData?.purity as string) || 'normal'}
-                label="Purity"
-                onChange={handlePurityChange}
-                sx={{
-                  bgcolor: '#0f172a',
-                  color: '#fff',
-                  '& .MuiSelect-icon': { color: '#aaa' },
-                }}
-              >
-                {purityTypes.map((purity) => (
-                  <MenuItem key={purity.id} value={purity.id}>
-                    {purity.name} ({purity.multiplier}x)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Box
-              sx={{
-                p: 1.5,
-                bgcolor: '#16213e',
-                borderRadius: 1,
-                textAlign: 'center',
-              }}
-            >
-              <Typography variant="caption" color="#888">
-                Output Rate
-              </Typography>
-              <Typography variant="h6" color="#fa9549">
-                {displayRate}/min
-              </Typography>
-            </Box>
-          </Box>
-        )}
 
         {node?.type === 'transport' && (
           <>
@@ -756,88 +733,90 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
         {node?.type === 'building' && (
           <>
             {/* Output/Storage Settings */}
-            <Box
-              component="fieldset"
-              sx={{
-                border: '1px solid #1f2937',
-                borderRadius: 1,
-                p: 1.5,
-                m: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
-                {selectedBuilding?.category !== 'storage' ? 'Production Output' : 'Storage'}
-              </Typography>
+            {(selectedBuilding?.category === 'storage' || showOutputSelector) && (
+              <Box
+                component="fieldset"
+                sx={{
+                  border: '1px solid #1f2937',
+                  borderRadius: 1,
+                  p: 1.5,
+                  m: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                }}
+              >
+                <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
+                  {selectedBuilding?.category !== 'storage' ? 'Production Output' : 'Storage'}
+                </Typography>
 
-              {selectedBuilding?.category !== 'storage' ? (
-                <Autocomplete
-                  size="small"
-                  options={availableOutputs}
-                  getOptionLabel={(option) => option.name}
-                  value={selectedOutputItem || null}
-                  onChange={handleOutputChange}
-                  renderOption={(props, option) => {
-                    const { key, ...rest } = props as { key: string } & Record<string, unknown>;
-                    const Icon = getIconComponent(option.icon);
-                    return (
-                      <Box component="li" key={key} {...rest} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Icon sx={{ fontSize: 18, color: '#2ecc71' }} />
-                        {option.name}
-                      </Box>
-                    );
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Produces"
-                      variant="outlined"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          bgcolor: '#0f172a',
-                          color: '#fff',
-                        },
-                        '& .MuiInputLabel-root': { color: '#9ca3af' },
-                      }}
-                    />
-                  )}
-                />
-              ) : (
-                <Autocomplete
-                  size="small"
-                  options={items}
-                  getOptionLabel={(option) => option.name}
-                  value={selectedStoredItem || null}
-                  onChange={(_, newValue) => dispatchChange('storedItem', newValue?.id || '')}
-                  renderOption={(props, option) => {
-                    const { key, ...rest } = props as { key: string } & Record<string, unknown>;
-                    const Icon = getIconComponent(option.icon);
-                    return (
-                      <Box component="li" key={key} {...rest} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Icon sx={{ fontSize: 18, color: '#60a5fa' }} />
-                        {option.name}
-                      </Box>
-                    );
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Stored Item"
-                      variant="outlined"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          bgcolor: '#0f172a',
-                          color: '#fff',
-                        },
-                        '& .MuiInputLabel-root': { color: '#9ca3af' },
-                      }}
-                    />
-                  )}
-                />
-              )}
-            </Box>
+                {selectedBuilding?.category !== 'storage' ? (
+                  <Autocomplete
+                    size="small"
+                    options={availableOutputs}
+                    getOptionLabel={(option) => option.name}
+                    value={selectedOutputItem || null}
+                    onChange={handleOutputChange}
+                    renderOption={(props, option) => {
+                      const { key, ...rest } = props as { key: string } & Record<string, unknown>;
+                      const Icon = getIconComponent(option.icon);
+                      return (
+                        <Box component="li" key={key} {...rest} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <Icon sx={{ fontSize: 18, color: '#2ecc71' }} />
+                          {option.name}
+                        </Box>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Produces"
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            bgcolor: '#0f172a',
+                            color: '#fff',
+                          },
+                          '& .MuiInputLabel-root': { color: '#9ca3af' },
+                        }}
+                      />
+                    )}
+                  />
+                ) : (
+                  <Autocomplete
+                    size="small"
+                    options={storageItems}
+                    getOptionLabel={(option) => option.name}
+                    value={selectedStoredItem || null}
+                    onChange={(_, newValue) => dispatchChange('storedItem', newValue?.id || '')}
+                    renderOption={(props, option) => {
+                      const { key, ...rest } = props as { key: string } & Record<string, unknown>;
+                      const Icon = getIconComponent(option.icon);
+                      return (
+                        <Box component="li" key={key} {...rest} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <Icon sx={{ fontSize: 18, color: '#60a5fa' }} />
+                          {option.name}
+                        </Box>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Stored Item"
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            bgcolor: '#0f172a',
+                            color: '#fff',
+                          },
+                          '& .MuiInputLabel-root': { color: '#9ca3af' },
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              </Box>
+            )}
 
             {/* Production Settings */}
             {selectedBuilding?.category !== 'storage' && (
@@ -869,26 +848,68 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                   label={<Typography variant="caption" color="#9ca3af">Custom Rate</Typography>}
                 />
 
-                {!customProduction ? (
+                {hasExtractorPurity && (
                   <FormControl fullWidth size="small">
-                    <InputLabel sx={{ color: '#9ca3af' }}>Production Speed</InputLabel>
+                    <InputLabel sx={{ color: '#9ca3af' }}>Purity</InputLabel>
                     <Select
-                      value={(nodeData?.production as number) || selectedBuilding?.defaultProduction || 0}
-                      label="Production Speed"
-                      onChange={handleProductionSelect}
+                      value={selectedPurity}
+                      label="Purity"
+                      onChange={handleExtractorPurityChange}
                       sx={{
                         bgcolor: '#0f172a',
                         color: '#fff',
                         '& .MuiSelect-icon': { color: '#9ca3af' },
                       }}
                     >
-                      {(selectedBuilding?.productionOptions || []).map((rate) => (
-                        <MenuItem key={rate} value={rate}>
-                          {rate}/min
+                      {PURITY_OPTIONS.map((purity) => (
+                        <MenuItem key={purity.id} value={purity.id}>
+                          {purity.label}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
+                )}
+
+                {!customProduction ? (
+                  <Autocomplete
+                    size="small"
+                    options={selectedBuilding?.productionOptions || []}
+                    getOptionLabel={(option) => `${option}/min`}
+                    value={
+                      (nodeData?.production as number) ||
+                      selectedBuilding?.defaultProduction ||
+                      null
+                    }
+                    onChange={handleProductionRateChange}
+                    renderOption={(props, option) => {
+                      const { key, ...rest } = props as { key: string } &
+                        Record<string, unknown>;
+                      return (
+                        <Box
+                          component="li"
+                          key={key}
+                          {...rest}
+                          sx={{ display: 'flex', gap: 1, alignItems: 'center' }}
+                        >
+                          {option}/min
+                        </Box>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Production Speed"
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            bgcolor: '#0f172a',
+                            color: '#fff',
+                          },
+                          '& .MuiInputLabel-root': { color: '#9ca3af' },
+                        }}
+                      />
+                    )}
+                  />
                 ) : (
                   <TextField
                     fullWidth

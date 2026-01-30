@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Node, Edge } from '@xyflow/react';
+import { useEffect, useRef } from "react";
+import { Node, Edge } from "@xyflow/react";
 
 interface UseKeyboardShortcutsProps {
   nodesRef: React.MutableRefObject<Node[]>;
@@ -8,6 +8,8 @@ interface UseKeyboardShortcutsProps {
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   handleDuplicateNodes: (nodeIds: string[]) => void;
+  saveBeforeDelete?: (nodeIds: string[]) => void;
+  handleUndo?: () => boolean;
 }
 
 interface UseKeyboardShortcutsReturn {
@@ -22,6 +24,8 @@ export function useKeyboardShortcuts({
   setNodes,
   setEdges,
   handleDuplicateNodes,
+  saveBeforeDelete,
+  handleUndo,
 }: UseKeyboardShortcutsProps): UseKeyboardShortcutsReturn {
   const ctrlDownRef = useRef(false);
   const copyBufferRef = useRef<string[]>([]);
@@ -29,23 +33,23 @@ export function useKeyboardShortcuts({
   // Ctrl/Cmd key tracking
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Control' || event.key === 'Meta') {
+      if (event.key === "Control" || event.key === "Meta") {
         ctrlDownRef.current = true;
       }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === 'Control' || event.key === 'Meta') {
+      if (event.key === "Control" || event.key === "Meta") {
         ctrlDownRef.current = false;
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
 
@@ -56,15 +60,21 @@ export function useKeyboardShortcuts({
       if (!isModifier) return;
 
       const target = event.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
         return;
       }
 
       const key = event.key.toLowerCase();
-      if (key === 'c') {
+      if (key === "c") {
         event.preventDefault();
-        copyBufferRef.current = nodesRef.current.filter((n) => n.selected).map((n) => n.id);
-      } else if (key === 'v') {
+        copyBufferRef.current = nodesRef.current
+          .filter((n) => n.selected)
+          .map((n) => n.id);
+      } else if (key === "v") {
         event.preventDefault();
         if (copyBufferRef.current.length > 0) {
           handleDuplicateNodes(copyBufferRef.current);
@@ -72,27 +82,34 @@ export function useKeyboardShortcuts({
       }
     };
 
-    window.addEventListener('keydown', handleCopyPaste);
-    return () => window.removeEventListener('keydown', handleCopyPaste);
+    window.addEventListener("keydown", handleCopyPaste);
+    return () => window.removeEventListener("keydown", handleCopyPaste);
   }, [handleDuplicateNodes, nodesRef]);
 
   // Delete/Backspace shortcut
   useEffect(() => {
     const handleDelete = (event: KeyboardEvent) => {
-      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
 
       const target = event.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
         return;
       }
 
       event.preventDefault();
 
       // Get selected items
-      const selectedNodeIds = nodesRef.current.filter((n) => n.selected).map((n) => n.id);
-      const selectedEdgeIds = selectedEdgesRef.current.length > 0
-        ? selectedEdgesRef.current
-        : edgesRef.current.filter((e) => e.selected).map((e) => e.id);
+      const selectedNodeIds = nodesRef.current
+        .filter((n) => n.selected)
+        .map((n) => n.id);
+      const selectedEdgeIds =
+        selectedEdgesRef.current.length > 0
+          ? selectedEdgesRef.current
+          : edgesRef.current.filter((e) => e.selected).map((e) => e.id);
 
       if (selectedNodeIds.length === 0 && selectedEdgeIds.length === 0) return;
 
@@ -109,23 +126,67 @@ export function useKeyboardShortcuts({
 
       // Delete nodes
       if (expandedNodeIds.size > 0) {
+        // Save nodes before deletion for undo
+        if (saveBeforeDelete) {
+          saveBeforeDelete(Array.from(expandedNodeIds));
+        }
         setNodes((nds) => nds.filter((node) => !expandedNodeIds.has(node.id)));
         setEdges((eds) =>
           eds.filter(
-            (edge) => !expandedNodeIds.has(edge.source) && !expandedNodeIds.has(edge.target)
-          )
+            (edge) =>
+              !expandedNodeIds.has(edge.source) &&
+              !expandedNodeIds.has(edge.target),
+          ),
         );
       }
 
       // Delete edges
       if (selectedEdgeIds.length > 0) {
-        setEdges((eds) => eds.filter((edge) => !selectedEdgeIds.includes(edge.id)));
+        setEdges((eds) =>
+          eds.filter((edge) => !selectedEdgeIds.includes(edge.id)),
+        );
       }
     };
 
-    window.addEventListener('keydown', handleDelete);
-    return () => window.removeEventListener('keydown', handleDelete);
-  }, [nodesRef, edgesRef, selectedEdgesRef, setNodes, setEdges]);
+    window.addEventListener("keydown", handleDelete);
+    return () => window.removeEventListener("keydown", handleDelete);
+  }, [
+    nodesRef,
+    edgesRef,
+    selectedEdgesRef,
+    setNodes,
+    setEdges,
+    saveBeforeDelete,
+  ]);
+
+  // Undo shortcut (Ctrl+Z / Cmd+Z)
+  useEffect(() => {
+    const handleUndoShortcut = (event: KeyboardEvent) => {
+      const isModifier = event.ctrlKey || event.metaKey;
+      if (!isModifier || event.key.toLowerCase() !== "z") return;
+
+      // Don't trigger in input fields
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Don't handle Ctrl+Shift+Z (redo) here
+      if (event.shiftKey) return;
+
+      event.preventDefault();
+      if (handleUndo) {
+        handleUndo();
+      }
+    };
+
+    window.addEventListener("keydown", handleUndoShortcut);
+    return () => window.removeEventListener("keydown", handleUndoShortcut);
+  }, [handleUndo]);
 
   return {
     ctrlDownRef,

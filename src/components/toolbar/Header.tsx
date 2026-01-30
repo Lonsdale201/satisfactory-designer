@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -13,9 +13,11 @@ import {
 import * as Icons from "@mui/icons-material";
 import { Node } from "@xyflow/react";
 import SettingsMenu, { UiSettings } from "./SettingsMenu";
+import ReactMarkdown from "react-markdown";
+import changelogRaw from "../../../CHANGELOG.md?raw";
 
 interface HeaderProps {
-  nodes: Node[];
+  nodesCount: number;
   calcEnabled: boolean;
   setCalcEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   handleCalculate: () => void;
@@ -31,18 +33,12 @@ interface HeaderProps {
   handleClearAll: () => void;
   uiSettings: UiSettings;
   setUiSettings: React.Dispatch<React.SetStateAction<UiSettings>>;
-  appVersion: string;
-  changelogEntries: Array<{
-    version: string;
-    title: string;
-    changes: string[];
-  }>;
   repoUrl: string;
 }
 
 const Header = memo(
   ({
-    nodes,
+    nodesCount,
     calcEnabled,
     setCalcEnabled,
     handleCalculate,
@@ -58,8 +54,6 @@ const Header = memo(
     handleClearAll,
     uiSettings,
     setUiSettings,
-    appVersion,
-    changelogEntries,
     repoUrl,
   }: HeaderProps) => {
     const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(
@@ -67,6 +61,29 @@ const Header = memo(
     );
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [changelogOpen, setChangelogOpen] = useState(false);
+    const [changelogPage, setChangelogPage] = useState(0);
+
+    const changelogBlocks = useMemo(() => {
+      const blocks = changelogRaw
+        .split(/\n(?=##\s)/g)
+        .map((block) => block.trim())
+        .filter((block) => block.startsWith("## "));
+      return blocks;
+    }, []);
+
+    const appVersion = useMemo(() => {
+      const first = changelogBlocks[0] || "";
+      const match = first.match(/^##\s+\[(.+?)\]/m);
+      return match ? match[1].trim() : "0.2.0";
+    }, [changelogBlocks]);
+
+    const totalPages = Math.max(1, Math.ceil(changelogBlocks.length / 2));
+    const pageStart = changelogPage * 2;
+    const pageBlocks = changelogBlocks.slice(pageStart, pageStart + 2);
+
+    useEffect(() => {
+      if (changelogOpen) setChangelogPage(0);
+    }, [changelogOpen]);
 
     const openSettings = (event: React.MouseEvent<HTMLElement>) => {
       setSettingsAnchor(event.currentTarget);
@@ -139,7 +156,7 @@ const Header = memo(
             bgcolor: "rgba(15, 23, 42, 0.6)",
           }}
         >
-          {nodes.length > 0 && (
+          {nodesCount > 0 && (
             <Tooltip
               title={
                 calcEnabled
@@ -205,7 +222,7 @@ const Header = memo(
           )}
 
           {/* Global collapse/expand toggle */}
-          {nodes.length > 0 && (
+          {nodesCount > 0 && (
             <Tooltip title={allCollapsed ? "Expand All" : "Collapse All"}>
               <IconButton
                 size="small"
@@ -396,26 +413,60 @@ const Header = memo(
         PaperProps={{ sx: { bgcolor: "#111827", color: "#e5e7eb", minWidth: 360 } }}
       >
         <DialogTitle>Changelog v{appVersion}</DialogTitle>
-        <DialogContent>
-          {changelogEntries.map((entry) => (
-            <Box key={entry.version} sx={{ mb: 1.5 }}>
-              <Typography sx={{ fontWeight: 700, color: "#e2e8f0", fontSize: 13 }}>
-                {entry.version} — {entry.title}
-              </Typography>
-              <Box sx={{ pl: 1, mt: 0.5 }}>
-                {entry.changes.map((change, index) => (
-                  <Typography
-                    key={`${entry.version}-${index}`}
-                    sx={{ fontSize: 12, color: "#cbd5f5" }}
-                  >
-                    • {change}
-                  </Typography>
-                ))}
+        <DialogContent sx={{ maxHeight: 320, overflowY: "auto" }}>
+          {changelogOpen &&
+            pageBlocks.map((block, index) => (
+              <Box
+                key={`changelog-${pageStart}-${index}`}
+                sx={{
+                  mb: 1.5,
+                  "& h2": {
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#e2e8f0",
+                    margin: "6px 0",
+                  },
+                  "& h3": {
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#93c5fd",
+                    margin: "6px 0 4px",
+                  },
+                  "& ul": {
+                    margin: "4px 0 8px 16px",
+                    padding: 0,
+                  },
+                  "& li": {
+                    fontSize: 12,
+                    color: "#cbd5f5",
+                    marginBottom: "2px",
+                  },
+                  "& strong": {
+                    color: "#e2e8f0",
+                  },
+                }}
+              >
+                <ReactMarkdown>{block}</ReactMarkdown>
               </Box>
-            </Box>
-          ))}
+            ))}
         </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 2 }}>
+        <DialogActions sx={{ px: 2, pb: 2, display: "flex", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              onClick={() => setChangelogPage((p) => Math.max(0, p - 1))}
+              disabled={changelogPage === 0}
+              sx={{ color: "#e2e8f0" }}
+            >
+              Prev
+            </Button>
+            <Button
+              onClick={() => setChangelogPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={changelogPage >= totalPages - 1}
+              sx={{ color: "#e2e8f0" }}
+            >
+              Next
+            </Button>
+          </Box>
           <Button onClick={() => setChangelogOpen(false)} sx={{ color: "#e2e8f0" }}>
             Close
           </Button>

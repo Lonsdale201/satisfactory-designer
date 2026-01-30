@@ -14,6 +14,7 @@ interface CustomEdgeContext {
   alwaysShowEdgeLabels: boolean;
   hoveredEdgeId: string | null;
   isDragging: boolean;
+  edges: Array<{ id: string; source: string; target: string }>;
 }
 
 // Factory function to create CustomEdge with context
@@ -28,26 +29,56 @@ export function createCustomEdge(contextRef: React.MutableRefObject<CustomEdgeCo
     targetPosition,
     data,
     selected,
+    source,
+    target,
+    sourceHandle,
+    targetHandle,
   }: CustomEdgeProps) {
+    const context = contextRef.current;
+    const parallelEdges = context.edges?.filter(
+      (edge) => edge.source === source && edge.target === target,
+    ) || [];
+    const parallelIndex = parallelEdges.findIndex((edge) => edge.id === id);
+    const parallelCount = parallelEdges.length;
+    const offsetBase = parallelCount > 1 ? 12 : 0;
+    const offset = parallelCount > 1
+      ? (parallelIndex - (parallelCount - 1) / 2) * offsetBase
+      : 0;
+    const isHorizontal =
+      sourcePosition === 'left' ||
+      sourcePosition === 'right' ||
+      targetPosition === 'left' ||
+      targetPosition === 'right';
+    const adjustedSourceX = isHorizontal ? sourceX : sourceX + offset;
+    const adjustedSourceY = isHorizontal ? sourceY + offset : sourceY;
+    const adjustedTargetX = isHorizontal ? targetX : targetX + offset;
+    const adjustedTargetY = isHorizontal ? targetY + offset : targetY;
     const [edgePath, labelX, labelY] = getSmoothStepPath({
-      sourceX,
-      sourceY,
+      sourceX: adjustedSourceX,
+      sourceY: adjustedSourceY,
       sourcePosition,
-      targetX,
-      targetY,
+      targetX: adjustedTargetX,
+      targetY: adjustedTargetY,
       targetPosition,
       borderRadius: 8,
     });
 
     const label = data?.label || '';
-    const material = data?.material || 'conveyor';
+    const labelText = data?.label || '';
+    const inferredMaterial =
+      sourceHandle?.includes('pipe') ||
+      targetHandle?.includes('pipe') ||
+      labelText.includes('m³') ||
+      labelText.includes('mÂł')
+        ? 'pipe'
+        : 'conveyor';
+    const material = data?.material || inferredMaterial;
     const isGhost = data?.isGhost || false;
 
     const colors = MATERIAL_COLORS[material];
     const baseStrokeColor = selected ? colors.selected : colors.primary;
     const strokeColor = isGhost ? colors.ghost : baseStrokeColor;
 
-    const context = contextRef.current;
     const showLabel = Boolean(
       label &&
       !isGhost &&
@@ -103,19 +134,49 @@ export const SimpleCustomEdge = memo(function SimpleCustomEdge({
   targetPosition,
   data,
   selected,
+  source,
+  target,
+  sourceHandle,
+  targetHandle,
 }: CustomEdgeProps) {
+  const parallelEdges =
+    typeof source === 'string' && typeof target === 'string'
+      ? [{ id, source, target }]
+      : [];
+  const parallelIndex = parallelEdges.findIndex((edge) => edge.id === id);
+  const parallelCount = parallelEdges.length;
+  const offsetBase = parallelCount > 1 ? 12 : 0;
+  const offset = parallelCount > 1
+    ? (parallelIndex - (parallelCount - 1) / 2) * offsetBase
+    : 0;
+  const isHorizontal =
+    sourcePosition === 'left' ||
+    sourcePosition === 'right' ||
+    targetPosition === 'left' ||
+    targetPosition === 'right';
+  const adjustedSourceX = isHorizontal ? sourceX : sourceX + offset;
+  const adjustedSourceY = isHorizontal ? sourceY + offset : sourceY;
+  const adjustedTargetX = isHorizontal ? targetX : targetX + offset;
+  const adjustedTargetY = isHorizontal ? targetY + offset : targetY;
   const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
+    sourceX: adjustedSourceX,
+    sourceY: adjustedSourceY,
     sourcePosition,
-    targetX,
-    targetY,
+    targetX: adjustedTargetX,
+    targetY: adjustedTargetY,
     targetPosition,
     borderRadius: 8,
   });
 
   const label = data?.label || '';
-  const material = data?.material || 'conveyor';
+  const inferredMaterial =
+    sourceHandle?.includes('pipe') ||
+    targetHandle?.includes('pipe') ||
+    label.includes('m³') ||
+    label.includes('mÂł')
+      ? 'pipe'
+      : 'conveyor';
+  const material = data?.material || inferredMaterial;
   const isGhost = data?.isGhost || false;
 
   const colors = MATERIAL_COLORS[material];
