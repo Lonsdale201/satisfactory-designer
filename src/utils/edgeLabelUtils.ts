@@ -45,11 +45,6 @@ export function getEdgeLabel(
     return item ? `${item.name} ${rate}/min (${mkRate})` : "";
   }
 
-  if (sourceNode.type === "transport") {
-    const item = itemsData.items.find((i) => i.id === data.deliveryItem);
-    return item ? `${item.name} (${mkRate})` : "";
-  }
-
   if (sourceNode.type === "conveyorLift") {
     const item = itemsData.items.find((i) => i.id === data.transportingItem);
     return item ? `${item.name} (${mkRate})` : "";

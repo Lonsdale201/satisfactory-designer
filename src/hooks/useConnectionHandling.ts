@@ -66,9 +66,6 @@ function inferType(
     return unique.length === 1 ? (unique[0] as "pipe" | "conveyor") : null;
   }
 
-  if (node.type === "transport") {
-    return direction === "output" ? "conveyor" : null;
-  }
 
   if (
     node.type === "smartSplitter" ||
@@ -104,9 +101,6 @@ function resolveDefaultType(
     return unique.length === 1 ? (unique[0] as "pipe" | "conveyor") : null;
   }
 
-  if (node.type === "transport") {
-    return direction === "output" ? "conveyor" : null;
-  }
 
   if (
     node.type === "smartSplitter" ||
@@ -131,9 +125,6 @@ function getIncomingItem(
 
   if (sourceNode.type === "building") {
     return sourceData.outputItem as string | undefined;
-  }
-  if (sourceNode.type === "transport") {
-    return sourceData.deliveryItem as string | undefined;
   }
   if (sourceNode.type === "conveyorLift") {
     return sourceData.transportingItem as string | undefined;
@@ -212,8 +203,6 @@ export function useConnectionHandling({
         let incomingItem: string | undefined;
         if (sourceNode?.type === "building") {
           incomingItem = sourceData.outputItem as string | undefined;
-        } else if (sourceNode?.type === "transport") {
-          incomingItem = sourceData.deliveryItem as string | undefined;
         }
 
         if (incomingItem && !targetData.outputItem) {

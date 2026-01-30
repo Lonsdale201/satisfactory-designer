@@ -103,16 +103,14 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
   }, [node, nodeData?.storedItem]);
 
   const storageItems = useMemo(() => {
-    if (selectedBuilding?.id === 'fluid_buffer') {
+    if (
+      selectedBuilding?.id === 'fluid_buffer' ||
+      selectedBuilding?.id === 'industrial_fluid_buffer'
+    ) {
       return items.filter((item) => item.category === 'fluid');
     }
     return items;
   }, [selectedBuilding?.id]);
-
-  const selectedDeliveryItem = useMemo(() => {
-    if (!node || node.type !== 'transport') return null;
-    return items.find(i => i.id === nodeData?.deliveryItem);
-  }, [node, nodeData?.deliveryItem]);
 
   const groupColorValue = (nodeData?.color as string) || '#0ea5e9';
   const nodeThemeValue = (nodeData?.theme as string) || '';
@@ -131,82 +129,25 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     { label: 'Indigo', value: 'indigo' },
   ];
 
-  const transportItems = useMemo(() => {
-    return items.filter((item) => item.category !== 'fluid');
-  }, []);
-
   const availableOutputs = useMemo(() => {
     if (!selectedBuilding) return [];
     if (selectedBuilding.fixedOutput) {
       return items.filter((item) => item.id === selectedBuilding.fixedOutput);
     }
-    if (selectedBuilding.category === 'extraction' && selectedBuilding.outputs?.length) {
-      return items.filter((item) => selectedBuilding.outputs.includes(item.id));
-    }
-    const inputs = selectedBuilding.inputs ?? 1;
-    const outputTypes = selectedBuilding.outputTypes ?? ['conveyor'];
-    const hasPipeOutput = outputTypes.includes('pipe');
-
-    // Special filtering for Smelter and Foundry
-    const smelterAllowedItems = ['caterium_ingot', 'copper_ingot', 'iron_ingot', 'aluminum_ingot'];
-    const foundryAllowedItems = ['steel_ingot', 'aluminum_ingot'];
-
-    if (selectedBuilding.id === 'refinery') {
-      const refineryAllowed = new Set([
-        'alumina_solution',
-        'aluminum_scrap',
-        'fuel',
-        'ionized_fuel',
-        'liquid_biofuel',
-        'petroleum_coke',
-        'plastic',
-        'polyester_fabric',
-        'residual_fuel',
-        'residual_plastic',
-        'residual_rubber',
-        'rubber',
-        'smokeless_powder',
-        'sulfuric_acid',
-        'turbofuel',
-        'wet_concrete',
-      ]);
-      return items.filter((item) => refineryAllowed.has(item.id));
+    if (selectedBuilding.outputs?.length) {
+      return items.filter((item) => {
+        if (!selectedBuilding.outputs.includes(item.id)) return false;
+        const hasRouting =
+          Boolean(item.defaultProducer) ||
+          (item.alternateProducers && item.alternateProducers.length > 0);
+        if (!hasRouting) return true;
+        if (item.defaultProducer === selectedBuilding.id) return true;
+        if (item.alternateProducers?.includes(selectedBuilding.id)) return true;
+        return false;
+      });
     }
 
-    return items.filter((item) => {
-      // Exclude fluids and ores for smelter and foundry
-      if (selectedBuilding.id === 'smelter' || selectedBuilding.id === 'foundry') {
-        if (item.category === 'fluid' || item.category === 'ore') return false;
-      }
-
-      // Smelter specific filtering
-      if (selectedBuilding.id === 'smelter') {
-        return smelterAllowedItems.includes(item.id);
-      }
-
-      // Foundry specific filtering
-      if (selectedBuilding.id === 'foundry') {
-        return foundryAllowedItems.includes(item.id);
-      }
-
-      if (selectedBuilding.id === 'constructor') {
-        return item.producers?.includes('constructor') || false;
-      }
-
-      if (selectedBuilding.id === 'assembler') {
-        return item.producers?.includes('assembler') || false;
-      }
-
-      if (selectedBuilding.id === 'manufacturer') {
-        return item.producers?.includes('manufacturer') || false;
-      }
-
-      // General filtering for other buildings
-      if (item.producers && !item.producers.includes(selectedBuilding.id)) return false;
-      if (item.inputCount && item.inputCount > inputs) return false;
-      if (item.category === 'fluid' && !hasPipeOutput) return false;
-      return true;
-    });
+    return items.filter((item) => item.producers?.includes(selectedBuilding.id));
   }, [selectedBuilding]);
 
   const buildingTypeOptions = useMemo(() => {
@@ -317,10 +258,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     dispatchChange('pipeMk', Number(event.target.value));
   }, [dispatchChange]);
 
-  const handleTransportOutputCountChange = useCallback((event: SelectChangeEvent) => {
-    dispatchChange('outputCount', Number(event.target.value));
-  }, [dispatchChange]);
-
   return (
     <Drawer
       anchor="right"
@@ -338,7 +275,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             {node?.type === 'building' && (selectedBuilding?.name || 'Building')}
             {node?.type === 'group' && ((nodeData?.label as string) || 'Production line')}
-            {node?.type === 'transport' && ((nodeData?.label as string) || 'Transport')}
             {node?.type === 'smartSplitter' && ((nodeData?.customLabel as string) || 'Smart Splitter')}
             {node?.type === 'goal' && ((nodeData?.customLabel as string) || 'Production Goal')}
             {node?.type === 'conveyorLift' && ((nodeData?.customLabel as string) || `Conveyor Lift Mk.${(nodeData?.liftMk as number) || 1}`)}
@@ -465,134 +401,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
             </FormControl>
           )}
         </Box>
-
-        {node?.type === 'transport' && (
-          <>
-            <Box
-              component="fieldset"
-              sx={{
-                border: '1px solid #1f2937',
-                borderRadius: 1,
-                p: 1.5,
-                m: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
-                Transport Settings
-              </Typography>
-
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: '#aaa' }}>Vehicle</InputLabel>
-                <Select
-                  value={(nodeData?.vehicle as string) || 'truck'}
-                  label="Vehicle"
-                  onChange={(e) => dispatchChange('vehicle', e.target.value)}
-                  sx={{
-                    bgcolor: '#0f172a',
-                    color: '#fff',
-                    '& .MuiSelect-icon': { color: '#aaa' },
-                  }}
-                >
-                  <MenuItem value="truck">Truck</MenuItem>
-                  <MenuItem value="tractor">Tractor</MenuItem>
-                  <MenuItem value="drone">Drone</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Autocomplete
-                size="small"
-                options={transportItems}
-                getOptionLabel={(option) => option.name}
-                value={selectedDeliveryItem || null}
-                onChange={(_, newValue) => dispatchChange('deliveryItem', newValue?.id || '')}
-                renderOption={(props, option) => {
-                  const { key, ...rest } = props as { key: string } & Record<string, unknown>;
-                  const Icon = getIconComponent(option.icon);
-                  return (
-                    <Box component="li" key={key} {...rest} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      <Icon sx={{ fontSize: 18, color: '#60a5fa' }} />
-                      {option.name}
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Delivery Item"
-                    variant="outlined"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: '#0f172a',
-                        color: '#fff',
-                      },
-                      '& .MuiInputLabel-root': { color: '#9ca3af' },
-                    }}
-                  />
-                )}
-              />
-
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: '#9ca3af' }}>Output Conveyors</InputLabel>
-                <Select
-                  value={(nodeData?.outputCount as number) || 1}
-                  label="Output Conveyors"
-                  onChange={handleTransportOutputCountChange}
-                  sx={{
-                    bgcolor: '#0f172a',
-                    color: '#fff',
-                    '& .MuiSelect-icon': { color: '#9ca3af' },
-                  }}
-                >
-                  <MenuItem value={1}>1 conveyor</MenuItem>
-                  <MenuItem value={2}>2 conveyors</MenuItem>
-                  <MenuItem value={3}>3 conveyors</MenuItem>
-                  <MenuItem value={4}>4 conveyors</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-
-            <Box
-              component="fieldset"
-              sx={{
-                border: '1px solid #1f2937',
-                borderRadius: 1,
-                p: 1.5,
-                m: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
-                Conveyor Settings
-              </Typography>
-
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: '#9ca3af' }}>Conveyor</InputLabel>
-                <Select
-                  value={(nodeData?.conveyorMk as number) || 1}
-                  label="Conveyor"
-                  onChange={handleConveyorMkChange}
-                  sx={{
-                    bgcolor: '#0f172a',
-                    color: '#fff',
-                    '& .MuiSelect-icon': { color: '#9ca3af' },
-                  }}
-                >
-                  <MenuItem value={1}>Mk.1 (60/min)</MenuItem>
-                  <MenuItem value={2}>Mk.2 (120/min)</MenuItem>
-                  <MenuItem value={3}>Mk.3 (270/min)</MenuItem>
-                  <MenuItem value={4}>Mk.4 (480/min)</MenuItem>
-                  <MenuItem value={5}>Mk.5 (780/min)</MenuItem>
-                  <MenuItem value={6}>Mk.6 (1200/min)</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </>
-        )}
 
         {node?.type === 'smartSplitter' && (
           <>

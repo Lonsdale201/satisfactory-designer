@@ -73,7 +73,6 @@ interface SidebarProps {
     type:
       | "building"
       | "group"
-      | "transport"
       | "smartSplitter"
       | "goal"
       | "conveyorLift",
@@ -420,57 +419,6 @@ function Sidebar({
                       e.dataTransfer.setData(
                         "application/satisplanner",
                         JSON.stringify({
-                          type: "transport",
-                          data: {
-                            label: "Transport",
-                            vehicle: "truck",
-                            deliveryItem: "",
-                            conveyorMk: 1,
-                            outputCount: 1,
-                          },
-                        }),
-                      );
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onClick={() =>
-                      onAddNode("transport", {
-                        label: "Transport",
-                        vehicle: "truck",
-                        deliveryItem: "",
-                        conveyorMk: 1,
-                        outputCount: 1,
-                      })
-                    }
-                    sx={{
-                      p: 1,
-                      bgcolor: "#16213e",
-                      cursor: "grab",
-                      border: "1px solid #1f2937",
-                      "&:hover": { bgcolor: "#1b2a4a" },
-                      "&:active": { cursor: "grabbing" },
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Icons.LocalShipping
-                        sx={{ color: "#60a5fa", fontSize: 20 }}
-                      />
-                      <Typography
-                        variant="body2"
-                        sx={{ color: "#fff", fontSize: "0.75rem" }}
-                      >
-                        Transport
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" sx={{ color: "#666" }}>
-                      External delivery
-                    </Typography>
-                  </Paper>
-                  <Paper
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(
-                        "application/satisplanner",
-                        JSON.stringify({
                           type: "smartSplitter",
                           data: {
                             label: "Smart Splitter",
@@ -654,6 +602,7 @@ function Sidebar({
                   title: "Storage",
                   ids: [
                     "fluid_buffer",
+                    "industrial_fluid_buffer",
                     "storage_container",
                     "industrial_storage",
                   ],

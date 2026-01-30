@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.1] - 2026-01-31
+
+### Added
+
+- Industrial Fluid Buffer (2 pipe inputs, 2 pipe outputs, 2400 m3)
+- New item recipes and alternate recipes
+- Missing item list made more compact to keep nodes from growing too wide
+
+### Changed
+
+- New item logic: removed hard-coded filters to support flexible alternate recipes
+- Storage fill calculations now work for solid and fluid containers
+- Hybrid output buildings (e.g. Refinery) output logic fixed
+- Transport node removed (distance-based results were unreliable)
+
+
+
 ## [0.2.0] - 2026-01-30
 
 ### Changed
@@ -44,11 +61,11 @@
 - **Water system overhaul:**
   - Water removed from Resource Node (use Water Extractor instead)
   - Water Extractor now has no input, only pipe output
-  - Pipeline tiers: Mk.1 (300 m³/min), Mk.2 (600 m³/min)
+  - Pipeline tiers: Mk.1 (300 mÂł/min), Mk.2 (600 mÂł/min)
   - Conveyor selector hidden for pipe-only buildings
-- **Fluid Buffer:** 400 m³ capacity with proper volume calculations
+- **Fluid Buffer:** 400 mÂł capacity with proper volume calculations
 - Improved node editor: Belt & Pipe settings only show relevant options
 
 ### Fixed
 
-- Calculator now properly handles fluid volumes in m³
+- Calculator now properly handles fluid volumes in mÂł

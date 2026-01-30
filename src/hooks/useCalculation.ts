@@ -27,8 +27,8 @@ export function useCalculation({
   edgesRef,
   setNodes,
 }: UseCalculationProps): UseCalculationReturn {
-  const [calcEnabled, setCalcEnabled] = useState(false);
-  const calcEnabledRef = useRef(false);
+  const [calcEnabled, setCalcEnabled] = useState(true);
+  const calcEnabledRef = useRef(true);
 
   // Keep ref in sync with state
   useEffect(() => {

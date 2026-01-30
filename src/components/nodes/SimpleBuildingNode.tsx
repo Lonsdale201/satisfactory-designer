@@ -27,6 +27,11 @@ const buildingImageMap = import.meta.glob("../../assets/building/*", {
 const normalizeKey = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
+const truncateLabel = (value: string, maxLen: number = 8) => {
+  if (value.length <= maxLen) return value;
+  return `${value.slice(0, maxLen)}…`;
+};
+
 // Format number: hide .0 decimals but keep .5 etc
 const formatNum = (n: number | undefined): string => {
   if (n === undefined) return "0";
@@ -1199,14 +1204,15 @@ const SimpleBuildingNode = memo(
                           <div
                             style={{
                               marginTop: 6,
-                              display: "flex",
-                              flexWrap: "wrap",
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
                               gap: 6,
                             }}
                           >
                             {missingRequirements.map((itemId) => {
                               const item = items.find((i) => i.id === itemId);
                               const icon = item ? findItemIconUrl(item) : "";
+                              const itemName = item?.name || itemId;
                               return (
                                 <div
                                   key={itemId}
@@ -1219,7 +1225,7 @@ const SimpleBuildingNode = memo(
                                     background: "rgba(239, 68, 68, 0.12)",
                                     border: "1px solid rgba(239, 68, 68, 0.5)",
                                   }}
-                                  title={item?.name || itemId}
+                                  title={itemName}
                                 >
                                   {!ui.hideAllImages &&
                                     (icon ? (
@@ -1253,7 +1259,7 @@ const SimpleBuildingNode = memo(
                                   <div
                                     style={{ fontSize: 11, color: "#fecaca" }}
                                   >
-                                    {item?.name || itemId}
+                                    {truncateLabel(itemName)}
                                   </div>
                                 </div>
                               );
@@ -1428,8 +1434,8 @@ const SimpleBuildingNode = memo(
                           <div
                             style={{
                               padding: "6px 8px",
-                              display: "flex",
-                              flexDirection: "column",
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
                               gap: 6,
                             }}
                           >

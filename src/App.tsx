@@ -31,7 +31,6 @@ import { Box } from "@mui/material";
 // Node components
 import SimpleBuildingNode from "./components/nodes/SimpleBuildingNode";
 import SimpleGroupNode from "./components/nodes/SimpleGroupNode";
-import SimpleTransportNode from "./components/nodes/SimpleTransportNode";
 import SmartSplitterNode from "./components/nodes/SmartSplitterNode";
 import GoalNode from "./components/nodes/GoalNode";
 import ConveyorLiftNode from "./components/nodes/ConveyorLiftNode";
@@ -82,7 +81,6 @@ import {
 const nodeTypes: NodeTypes = {
   building: SimpleBuildingNode,
   group: SimpleGroupNode,
-  transport: SimpleTransportNode,
   smartSplitter: SmartSplitterNode,
   goal: GoalNode,
   conveyorLift: ConveyorLiftNode,
@@ -182,7 +180,6 @@ const FlowCanvas = memo(
           }}
           nodeColor={(node) => {
             if (node.type === "building") return "#fa9549";
-            if (node.type === "transport") return "#60a5fa";
             return "#888";
           }}
           zoomable
@@ -422,6 +419,13 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, [nodes, edges, nodeIdCounter, isInitialized]);
 
+  useEffect(() => {
+    if (!isInitialized) return;
+    if (calcEnabledRef.current) {
+      handleCalculate();
+    }
+  }, [isInitialized, handleCalculate, calcEnabledRef]);
+
   // Export handler
   const handleExport = useCallback(() => {
     exportToFile(nodes, edges, nodeIdCounter);
@@ -543,11 +547,6 @@ function AppContent() {
         return item ? `${item.name} ${rate}/min (${mkRate})` : "";
       }
 
-      if (sourceNode.type === "transport") {
-        const item = itemsData.items.find((i) => i.id === data.deliveryItem);
-        return item ? `${item.name} (${mkRate})` : "";
-      }
-
       if (sourceNode.type === "conveyorLift") {
         const item = itemsData.items.find(
           (i) => i.id === data.transportingItem,
@@ -608,9 +607,6 @@ function AppContent() {
               : (building?.outputTypes ?? ["conveyor"]);
           const unique = Array.from(new Set(types));
           return unique.length === 1 ? unique[0] : null;
-        }
-        if (node.type === "transport") {
-          return direction === "output" ? "conveyor" : null;
         }
         if (node.type === "smartSplitter") {
           // Smart Splitter always uses conveyor for both input and output
@@ -677,9 +673,6 @@ function AppContent() {
           const unique = Array.from(new Set(types));
           return unique.length === 1 ? unique[0] : null;
         }
-        if (node.type === "transport") {
-          return direction === "output" ? "conveyor" : null;
-        }
         if (
           node.type === "smartSplitter" ||
           node.type === "goal" ||
@@ -725,7 +718,8 @@ function AppContent() {
 
       const getEdgeItemId = (
         node: Node | undefined,
-        handleId?: string | null,
+        sourceHandle?: string | null,
+        targetHandle?: string | null,
       ): string | undefined => {
         if (!node) return undefined;
         const data = node.data as Record<string, unknown>;
@@ -734,7 +728,9 @@ function AppContent() {
           if (!outputItemId) {
             return data.storedItem as string | undefined;
           }
-          const isPipe = Boolean(handleId?.includes("pipe"));
+          const isPipe = Boolean(
+            sourceHandle?.includes("pipe") || targetHandle?.includes("pipe"),
+          );
           if (isPipe) {
             const outputItem = itemsData.items.find(
               (item) => item.id === outputItemId,
@@ -756,9 +752,6 @@ function AppContent() {
           }
           return outputItemId;
         }
-        if (node.type === "transport") {
-          return data.deliveryItem as string | undefined;
-        }
         if (node.type === "conveyorLift") {
           return data.transportingItem as string | undefined;
         }
@@ -774,7 +767,11 @@ function AppContent() {
         return undefined;
       };
 
-      const edgeItemId = getEdgeItemId(sourceNode, params.sourceHandle);
+      const edgeItemId = getEdgeItemId(
+        sourceNode,
+        params.sourceHandle,
+        params.targetHandle,
+      );
 
       // Auto-set production building output based on incoming item
       if (resolvedTargetNode?.type === "building") {
@@ -1007,19 +1004,17 @@ function AppContent() {
         }
 
         // Update edge labels only for relevant field changes
-        const relevantFields = [
-          "outputItem",
-          "selectedAltIndex",
-          "selectedRecipeIndex",
-          "production",
-          "conveyorMk",
-          "pipeMk",
-          "purity",
-          "buildingId",
-          "deliveryItem",
-          "outputCount",
-          "transportingItem",
-        ];
+          const relevantFields = [
+            "outputItem",
+            "selectedAltIndex",
+            "selectedRecipeIndex",
+            "production",
+            "conveyorMk",
+            "pipeMk",
+            "purity",
+            "buildingId",
+            "transportingItem",
+          ];
         if (relevantFields.includes(field)) {
           setEdges((eds) =>
             eds.map((edge) => {
@@ -1634,9 +1629,6 @@ function AppContent() {
           return data.storedItem ? [data.storedItem as string] : [];
         }
         return data.outputItem ? [data.outputItem as string] : [];
-      }
-      if (node.type === "transport") {
-        return data.deliveryItem ? [data.deliveryItem as string] : [];
       }
       if (node.type === "conveyorLift") {
         return data.transportingItem ? [data.transportingItem as string] : [];

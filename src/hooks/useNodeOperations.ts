@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Node, Edge } from '@xyflow/react';
 
-export type NodeType = 'building' | 'group' | 'transport' | 'smartSplitter' | 'goal' | 'conveyorLift';
+export type NodeType = 'building' | 'group' | 'smartSplitter' | 'goal' | 'conveyorLift';
 
 interface UseNodeOperationsProps {
   nodeIdCounter: number;
@@ -35,21 +35,6 @@ function createGroupNodeData(currentLayer: number) {
   };
 }
 
-function createTransportNodeData(currentLayer: number, data?: Partial<Record<string, unknown>>) {
-  return {
-    label: 'Transport',
-    vehicle: (data?.vehicle as 'truck' | 'tractor' | 'drone') || 'truck',
-    deliveryItem: (data?.deliveryItem as string) || '',
-    customLabel: '',
-    conveyorMk: (data?.conveyorMk as number) || 1,
-    outputCount: (data?.outputCount as number) || 1,
-    theme: (data?.theme as string) || '',
-    collapsed: false,
-    hasInput: false,
-    hasOutput: true,
-    layer: currentLayer,
-  };
-}
 
 function createSmartSplitterNodeData(currentLayer: number) {
   return {
@@ -137,9 +122,6 @@ export function useNodeOperations({
       switch (type) {
         case 'group':
           nodeData = createGroupNodeData(currentLayer);
-          break;
-        case 'transport':
-          nodeData = createTransportNodeData(currentLayer, data);
           break;
         case 'smartSplitter':
           nodeData = createSmartSplitterNodeData(currentLayer);

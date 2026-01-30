@@ -91,16 +91,6 @@ export interface GroupNodeData {
   lockChildren?: boolean;
 }
 
-export interface TransportNodeData {
-  [key: string]: unknown;
-  label: string;
-  vehicle: 'truck' | 'tractor' | 'drone';
-  deliveryItem: string;
-  customLabel?: string;
-  conveyorMk?: 1 | 2 | 3;
-  outputCount?: number;
-  theme?: string;
-}
 
 export interface SplitterOutputConfig {
   item: string | null;
@@ -135,10 +125,9 @@ export interface ConveyorLiftNodeData {
 // Custom node types
 export type BuildingNode = Node<BuildingNodeData, 'building'>;
 export type GroupNode = Node<GroupNodeData, 'group'>;
-export type TransportNode = Node<TransportNodeData, 'transport'>;
 export type SmartSplitterNode = Node<SmartSplitterNodeData, 'smartSplitter'>;
 export type ConveyorLiftNode = Node<ConveyorLiftNodeData, 'conveyorLift'>;
-export type AppNode = BuildingNode | GroupNode | TransportNode | SmartSplitterNode | ConveyorLiftNode;
+export type AppNode = BuildingNode | GroupNode | SmartSplitterNode | ConveyorLiftNode;
 
 // Edge type
 export type AppEdge = Edge;
