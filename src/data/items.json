@@ -1,0 +1,1295 @@
+{
+  "items": [
+    {
+      "id": "iron_ore",
+      "name": "Iron Ore",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "copper_ore",
+      "name": "Copper Ore",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "limestone",
+      "name": "Limestone",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "coal",
+      "name": "Coal",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "caterium_ore",
+      "name": "Caterium Ore",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "raw_quartz",
+      "name": "Raw Quartz",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "sulfur",
+      "name": "Sulfur",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "bauxite",
+      "name": "Bauxite",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "uranium",
+      "name": "Uranium",
+      "category": "ore",
+      "icon": "terrain"
+    },
+    {
+      "id": "crude_oil",
+      "name": "Crude Oil",
+      "category": "fluid",
+      "icon": "water_drop"
+    },
+    {
+      "id": "water",
+      "name": "Water",
+      "category": "fluid",
+      "icon": "water"
+    },
+    {
+      "id": "nitrogen_gas",
+      "name": "Nitrogen Gas",
+      "category": "fluid",
+      "icon": "air"
+    },
+    {
+      "id": "iron_ingot",
+      "name": "Iron Ingot",
+      "category": "ingot",
+      "icon": "view_in_ar",
+      "defaultProduction": 30,
+      "producers": ["smelter"],
+      "requires": [
+        {
+          "item": "iron_ore",
+          "amount": 30
+        }
+      ]
+    },
+    {
+      "id": "copper_ingot",
+      "name": "Copper Ingot",
+      "category": "ingot",
+      "icon": "view_in_ar",
+      "defaultProduction": 30,
+      "producers": ["smelter"],
+      "requires": [
+        {
+          "item": "copper_ore",
+          "amount": 30
+        }
+      ]
+    },
+    {
+      "id": "caterium_ingot",
+      "name": "Caterium Ingot",
+      "category": "ingot",
+      "icon": "view_in_ar",
+      "defaultProduction": 15,
+      "producers": ["smelter"]
+    },
+    {
+      "id": "steel_ingot",
+      "name": "Steel Ingot",
+      "category": "ingot",
+      "icon": "view_in_ar",
+      "producers": ["foundry"],
+      "inputCount": 2,
+      "defaultProduction": 45,
+      "requires": [
+        { "item": "iron_ore", "amount": 45 },
+        { "item": "coal", "amount": 45 }
+      ]
+    },
+    {
+      "id": "aluminum_ingot",
+      "name": "Aluminum Ingot",
+      "category": "ingot",
+      "icon": "view_in_ar",
+      "producers": ["foundry"],
+      "inputCount": 2
+    },
+    {
+      "id": "iron_plate",
+      "name": "Iron Plate",
+      "category": "part",
+      "icon": "square",
+      "defaultProduction": 20,
+      "requires": [
+        {
+          "item": "iron_ingot",
+          "amount": 30
+        }
+      ],
+      "producers": ["constructor"]
+    },
+    {
+      "id": "iron_rod",
+      "name": "Iron Rod",
+      "category": "part",
+      "icon": "horizontal_rule",
+      "defaultProduction": 15,
+      "requires": [
+        {
+          "item": "iron_ingot",
+          "amount": 15
+        }
+      ],
+      "producers": ["constructor"]
+    },
+    {
+      "id": "copper_sheet",
+      "name": "Copper Sheet",
+      "category": "part",
+      "icon": "square",
+      "defaultProduction": 10,
+      "requires": [
+        {
+          "item": "copper_ingot",
+          "amount": 2
+        }
+      ],
+      "producers": ["constructor"]
+    },
+    {
+      "id": "wire",
+      "name": "Wire",
+      "category": "part",
+      "icon": "cable",
+      "defaultProduction": 30,
+      "requires": [
+        {
+          "item": "copper_ingot",
+          "amount": 15
+        }
+      ],
+      "producers": ["constructor"]
+    },
+    {
+      "id": "cable",
+      "name": "Cable",
+      "category": "part",
+      "icon": "cable",
+      "defaultProduction": 30,
+      "requires": [
+        {
+          "item": "wire",
+          "amount": 60
+        }
+      ],
+      "producers": ["constructor"]
+    },
+    {
+      "id": "concrete",
+      "name": "Concrete",
+      "category": "part",
+      "icon": "crop_square",
+      "defaultProduction": 15,
+      "producers": ["constructor"]
+    },
+    {
+      "id": "screws",
+      "name": "Screws",
+      "category": "part",
+      "icon": "settings",
+      "defaultProduction": 40,
+      "requires": [
+        {
+          "item": "iron_rod",
+          "amount": 10
+        }
+      ],
+      "alternateRequires": [
+        [
+          {
+            "item": "iron_ingot",
+            "amount": 10
+          }
+        ]
+      ],
+      "producers": ["constructor"]
+    },
+    {
+      "id": "steel_beam",
+      "name": "Steel Beam",
+      "category": "part",
+      "icon": "horizontal_rule",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "steel_pipe",
+      "name": "Steel Pipe",
+      "category": "part",
+      "icon": "horizontal_rule",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "reinforced_iron_plate",
+      "name": "Reinforced Iron Plate",
+      "category": "component",
+      "icon": "grid_view",
+      "inputCount": 2,
+      "defaultProduction": 5,
+      "requires": [
+        {
+          "item": "iron_plate",
+          "amount": 6
+        },
+        {
+          "item": "screws",
+          "amount": 12
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "modular_frame",
+      "name": "Modular Frame",
+      "category": "component",
+      "icon": "view_module",
+      "inputCount": 2,
+      "requires": [
+        {
+          "item": "reinforced_iron_plate",
+          "amount": 1
+        },
+        {
+          "item": "iron_rod",
+          "amount": 1
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "rotor",
+      "name": "Rotor",
+      "category": "component",
+      "icon": "settings_suggest",
+      "inputCount": 2,
+      "defaultProduction": 4,
+      "requires": [
+        {
+          "item": "iron_rod",
+          "amount": 1
+        },
+        {
+          "item": "screws",
+          "amount": 1
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "smart_plating",
+      "name": "Smart Plating",
+      "category": "component",
+      "icon": "memory",
+      "inputCount": 2,
+      "defaultProduction": 2,
+      "requires": [
+        {
+          "item": "reinforced_iron_plate",
+          "amount": 2
+        },
+        {
+          "item": "rotor",
+          "amount": 2
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "automated_wiring",
+      "name": "Automated Wiring",
+      "category": "component",
+      "icon": "electrical_services",
+      "inputCount": 2,
+      "defaultProduction": 2.5,
+      "requires": [
+        {
+          "item": "stator",
+          "amount": 2.5
+        },
+        {
+          "item": "cable",
+          "amount": 50
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "heavy_modular_frame",
+      "name": "Heavy Modular Frame",
+      "category": "component",
+      "icon": "view_module",
+      "inputCount": 4,
+      "defaultProduction": 2,
+      "requires": [
+        {
+          "item": "modular_frame",
+          "amount": 10
+        },
+        {
+          "item": "steel_pipe",
+          "amount": 40
+        },
+        {
+          "item": "encased_industrial_beam",
+          "amount": 10
+        },
+        {
+          "item": "screws",
+          "amount": 240
+        }
+      ],
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "motor",
+      "name": "Motor",
+      "category": "component",
+      "icon": "electric_bolt",
+      "inputCount": 2,
+      "defaultProduction": 5,
+      "requires": [
+        {
+          "item": "rotor",
+          "amount": 1
+        },
+        {
+          "item": "stator",
+          "amount": 1
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "stator",
+      "name": "Stator",
+      "category": "component",
+      "icon": "donut_large",
+      "inputCount": 2,
+      "defaultProduction": 5,
+      "requires": [
+        {
+          "item": "steel_pipe",
+          "amount": 1
+        },
+        {
+          "item": "wire",
+          "amount": 1
+        }
+      ],
+      "producers": ["assembler"]
+    },
+    {
+      "id": "computer",
+      "name": "Computer",
+      "category": "component",
+      "icon": "computer",
+      "inputCount": 3,
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "crystal_oscillator",
+      "name": "Crystal Oscillator",
+      "category": "component",
+      "icon": "waves",
+      "inputCount": 3,
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "plastic",
+      "name": "Plastic",
+      "category": "oil_product",
+      "icon": "bubble_chart",
+      "inputCount": 2
+    },
+    {
+      "id": "rubber",
+      "name": "Rubber",
+      "category": "oil_product",
+      "icon": "bubble_chart",
+      "inputCount": 2
+    },
+    {
+      "id": "fuel",
+      "name": "Fuel",
+      "category": "oil_product",
+      "icon": "local_gas_station",
+      "inputCount": 2
+    },
+    {
+      "id": "petroleum_coke",
+      "name": "Petroleum Coke",
+      "category": "oil_product",
+      "icon": "local_fire_department",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_water",
+      "name": "Packaged Water",
+      "category": "packaged",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_fuel",
+      "name": "Packaged Fuel",
+      "category": "packaged",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_oil",
+      "name": "Packaged Oil",
+      "category": "packaged",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "ai_expansion_server",
+      "name": "AI Expansion Server",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 4,
+      "requires": [
+        { "item": "magnetic_field_generator", "amount": 1 },
+        { "item": "neural_quantum_processor", "amount": 1 },
+        { "item": "superposition_oscillator", "amount": 1 },
+        { "item": "excited_photonic_matter", "amount": 1 }
+      ],
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "ai_limiter",
+      "name": "AI Limiter",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["assembler"]
+    },
+    {
+      "id": "adaptive_control_unit",
+      "name": "Adaptive Control Unit",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 4,
+      "defaultProduction": 1,
+      "requires": [
+        {
+          "item": "automated_wiring",
+          "amount": 5
+        },
+        {
+          "item": "circuit_board",
+          "amount": 5
+        },
+        {
+          "item": "heavy_modular_frame",
+          "amount": 1
+        },
+        {
+          "item": "computer",
+          "amount": 2
+        }
+      ],
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "alclad_aluminum_sheet",
+      "name": "Alclad Aluminum Sheet",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["assembler"]
+    },
+    {
+      "id": "alien_dna_capsule",
+      "name": "Alien DNA Capsule",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "alien_power_matrix",
+      "name": "Alien Power Matrix",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "alien_protein",
+      "name": "Alien Protein",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "alien_remains",
+      "name": "Alien Remains",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "aluminum_casing",
+      "name": "Aluminum Casing",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "aluminum_scrap",
+      "name": "Aluminum Scrap",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "assembly_director_system",
+      "name": "Assembly Director System",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["assembler"]
+    },
+    {
+      "id": "bacon_agaric",
+      "name": "Bacon Agaric",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "ballistic_warp_drive",
+      "name": "Ballistic Warp Drive",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 4,
+      "requires": [
+        { "item": "thermal_propulsion_rocket", "amount": 1 },
+        { "item": "singularity_cell", "amount": 1 },
+        { "item": "superposition_oscillator", "amount": 1 },
+        { "item": "dark_matter_crystal", "amount": 1 }
+      ],
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "battery",
+      "name": "Battery",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "beacon",
+      "name": "Beacon",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "beryl_nut",
+      "name": "Beryl Nut",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "biochemical_sculptor",
+      "name": "Biochemical Sculptor",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2,
+      "requires": [
+        { "item": "assembly_director_system", "amount": 1 },
+        { "item": "water", "amount": 1 }
+      ],
+      "producers": ["blender"]
+    },
+    {
+      "id": "biomass",
+      "name": "Biomass",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "black_powder",
+      "name": "Black Powder",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["assembler"]
+    },
+    {
+      "id": "blade_runners",
+      "name": "Blade Runners",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "boom_box",
+      "name": "Boom Box",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "chainsaw",
+      "name": "Chainsaw",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "circuit_board",
+      "name": "Circuit Board",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["assembler"]
+    },
+    {
+      "id": "color_cartridge",
+      "name": "Color Cartridge",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "compacted_coal",
+      "name": "Compacted Coal",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "cooling_system",
+      "name": "Cooling System",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "copper_powder",
+      "name": "Copper Powder",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "cup",
+      "name": "Cup",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "dark_matter_crystal",
+      "name": "Dark Matter Crystal",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["particle_accelerator"]
+    },
+    {
+      "id": "dark_matter_residue",
+      "name": "Dark Matter Residue",
+      "category": "fluid",
+      "icon": "water_drop",
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "excited_photonic_matter",
+      "name": "Excited Photonic Matter",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["particle_accelerator"]
+    },
+    {
+      "id": "diamonds",
+      "name": "Diamonds",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "electromagnetic_control_rod",
+      "name": "Electromagnetic Control Rod",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "empty_canister",
+      "name": "Empty Canister",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "empty_fluid_tank",
+      "name": "Empty Fluid Tank",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "encased_industrial_beam",
+      "name": "Encased Industrial Beam",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2,
+      "defaultProduction": 6,
+      "requires": [
+        {
+          "item": "concrete",
+          "amount": 1
+        },
+        {
+          "item": "steel_beam",
+          "amount": 1
+        }
+      ],
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "encased_plutonium_cell",
+      "name": "Encased Plutonium Cell",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["assembler"]
+    },
+    {
+      "id": "encased_uranium_cell",
+      "name": "Encased Uranium Cell",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "ficsit_coupon",
+      "name": "FICSIT Coupon",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "ficsmas_equipment",
+      "name": "FICSMAS/Equipment",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "fabric",
+      "name": "Fabric",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "ficsite_ingot",
+      "name": "Ficsite Ingot",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "ficsite_trigon",
+      "name": "Ficsite Trigon",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "ficsonium",
+      "name": "Ficsonium",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "ficsonium_fuel_rod",
+      "name": "Ficsonium Fuel Rod",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "flower_petals",
+      "name": "Flower Petals",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "fused_modular_frame",
+      "name": "Fused Modular Frame",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "gas_mask",
+      "name": "Gas Mask",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "gas_filter",
+      "name": "Gas Filter",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "iodine_infused_filter",
+      "name": "Iodine-Infused Filter",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "hub_parts",
+      "name": "HUB Parts",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "hard_drive",
+      "name": "Hard Drive",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "hazmat_suit",
+      "name": "Hazmat Suit",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "heat_sink",
+      "name": "Heat Sink",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "high_speed_connector",
+      "name": "High-Speed Connector",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "hoverpack",
+      "name": "Hoverpack",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "jetpack",
+      "name": "Jetpack",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "leaves",
+      "name": "Leaves",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "magnetic_field_generator",
+      "name": "Magnetic Field Generator",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "medicinal_inhaler",
+      "name": "Medicinal Inhaler",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "mercer_sphere",
+      "name": "Mercer Sphere",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "miner",
+      "name": "Miner",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "modular_engine",
+      "name": "Modular Engine",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "mycelia",
+      "name": "Mycelia",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "neural_quantum_processor",
+      "name": "Neural-Quantum Processor",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "nobelisk_detonator",
+      "name": "Nobelisk Detonator",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "non_fissile_uranium",
+      "name": "Non-Fissile Uranium",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "nuclear_pasta",
+      "name": "Nuclear Pasta",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "object_scanner",
+      "name": "Object Scanner",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "packaged_alumina_solution",
+      "name": "Packaged Alumina Solution",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_heavy_oil_residue",
+      "name": "Packaged Heavy Oil Residue",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_ionized_fuel",
+      "name": "Packaged Ionized Fuel",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_liquid_biofuel",
+      "name": "Packaged Liquid Biofuel",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_nitric_acid",
+      "name": "Packaged Nitric Acid",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_nitrogen_gas",
+      "name": "Packaged Nitrogen Gas",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_rocket_fuel",
+      "name": "Packaged Rocket Fuel",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_sulfuric_acid",
+      "name": "Packaged Sulfuric Acid",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "packaged_turbofuel",
+      "name": "Packaged Turbofuel",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "paleberry",
+      "name": "Paleberry",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "parachute",
+      "name": "Parachute",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "plutonium_fuel_rod",
+      "name": "Plutonium Fuel Rod",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "plutonium_pellet",
+      "name": "Plutonium Pellet",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "plutonium_waste",
+      "name": "Plutonium Waste",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "polymer_resin",
+      "name": "Polymer Resin",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2
+    },
+    {
+      "id": "power_shard",
+      "name": "Power Shard",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "power_slug",
+      "name": "Power Slug",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "pressure_conversion_cube",
+      "name": "Pressure Conversion Cube",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "quartz_crystal",
+      "name": "Quartz Crystal",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "quickwire",
+      "name": "Quickwire",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "radio_control_unit",
+      "name": "Radio Control Unit",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "reanimated_sam",
+      "name": "Reanimated SAM",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "rebar_gun",
+      "name": "Rebar Gun",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "rifle",
+      "name": "Rifle",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "sam",
+      "name": "SAM",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "sam_fluctuator",
+      "name": "SAM Fluctuator",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 3,
+      "defaultProduction": 10,
+      "requires": [
+        {
+          "item": "steel_pipe",
+          "amount": 1
+        },
+        {
+          "item": "wire",
+          "amount": 1
+        },
+        {
+          "item": "reanimated_sam",
+          "amount": 1
+        }
+      ],
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "silica",
+      "name": "Silica",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["constructor"]
+    },
+    {
+      "id": "singularity_cell",
+      "name": "Singularity Cell",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "smokeless_powder",
+      "name": "Smokeless Powder",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "solid_biofuel",
+      "name": "Solid Biofuel",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "somersloop",
+      "name": "Somersloop",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "somersloop_zh",
+      "name": "Somersloop/zh",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "statues",
+      "name": "Statues",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "supercomputer",
+      "name": "Supercomputer",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "superposition_oscillator",
+      "name": "Superposition Oscillator",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["quantum_encoder"]
+    },
+    {
+      "id": "thermal_propulsion_rocket",
+      "name": "Thermal Propulsion Rocket",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "time_crystal",
+      "name": "Time Crystal",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "turbo_motor",
+      "name": "Turbo Motor",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "uranium_fuel_rod",
+      "name": "Uranium Fuel Rod",
+      "category": "item",
+      "icon": "inventory_2",
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "uranium_waste",
+      "name": "Uranium Waste",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "versatile_framework",
+      "name": "Versatile Framework",
+      "category": "item",
+      "icon": "inventory_2",
+      "inputCount": 2,
+      "defaultProduction": 2.5,
+      "requires": [
+        {
+          "item": "modular_frame",
+          "amount": 2.5
+        },
+        {
+          "item": "steel_beam",
+          "amount": 30
+        }
+      ],
+      "producers": ["manufacturer"]
+    },
+    {
+      "id": "vines",
+      "name": "Vines",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "wood",
+      "name": "Wood",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "xeno_basher",
+      "name": "Xeno-Basher",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "xeno_zapper",
+      "name": "Xeno-Zapper",
+      "category": "item",
+      "icon": "inventory_2"
+    },
+    {
+      "id": "zipline",
+      "name": "Zipline",
+      "category": "item",
+      "icon": "inventory_2"
+    }
+  ]
+}

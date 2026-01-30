@@ -1,0 +1,214 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #0d1117;
+}
+
+/* React Flow Customization */
+.react-flow__background {
+  background-color: #0d1117 !important;
+}
+
+.react-flow__minimap {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__minimap svg {
+  background: transparent !important;
+}
+
+.react-flow__controls {
+  background-color: #1a1a2e !important;
+  border: 1px solid #333 !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__controls-button {
+  background-color: #1a1a2e !important;
+  border-bottom: 1px solid #333 !important;
+  color: #888 !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #16213e !important;
+  color: #fff !important;
+}
+
+/* Edge styling - narancssárga szín */
+.react-flow__edge-path {
+  stroke: #fa9549 !important;
+  stroke-width: 2 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #fff !important;
+  stroke-width: 3 !important;
+}
+
+.react-flow__connection-line {
+  stroke: #fa9549 !important;
+  stroke-width: 2 !important;
+}
+
+/* Handle styling */
+.react-flow__handle {
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+}
+
+.react-flow__handle-right {
+  transform: translate(50%, -50%);
+}
+
+.react-flow__handle:hover {
+  transform: translate(-50%, -50%) !important;
+}
+
+.react-flow__handle-right:hover {
+  transform: translate(50%, -50%) !important;
+}
+
+.react-flow__handle-connecting {
+  transform: translate(-50%, -50%) !important;
+}
+
+.react-flow__handle-right.react-flow__handle-connecting {
+  transform: translate(50%, -50%) !important;
+}
+
+/* Node dragging - GPU acceleration */
+.react-flow__node {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.react-flow__node.dragging {
+  cursor: grabbing !important;
+  z-index: 1000 !important;
+  pointer-events: none;
+}
+
+/* Disable transitions during drag for smoothness */
+.react-flow__node.dragging * {
+  transition: none !important;
+}
+
+/* Edge performance */
+.react-flow__edges {
+  pointer-events: none;
+}
+
+.react-flow__edge {
+  pointer-events: visibleStroke;
+}
+
+/* Smoother transitions */
+.react-flow__viewport {
+  transition: none !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* MUI Autocomplete dropdown styling */
+.MuiAutocomplete-popper {
+  z-index: 1500 !important;
+}
+
+.MuiAutocomplete-listbox {
+  background-color: #1a1a2e !important;
+  color: #fff !important;
+}
+
+.MuiAutocomplete-option {
+  color: #fff !important;
+}
+
+.MuiAutocomplete-option:hover {
+  background-color: #16213e !important;
+}
+
+.MuiAutocomplete-option[aria-selected="true"] {
+  background-color: #3498db33 !important;
+}
+
+@keyframes flow-dash {
+  to { stroke-dashoffset: -12; }
+}
+
+@keyframes border-pulse {
+  0%, 100% { border-color: rgba(46, 204, 113, 0.8); }
+  50% { border-color: rgba(46, 204, 113, 0.3); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+@keyframes stack-flash {
+  0% { opacity: 0.2; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stack-swipe {
+  0% { opacity: 0; transform: translateX(10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes goal-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4), 0 0 40px rgba(234, 179, 8, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(234, 179, 8, 0.6), 0 0 60px rgba(234, 179, 8, 0.3); }
+}
+
+@keyframes goal-achieved {
+  0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.3); }
+  50% { box-shadow: 0 0 35px rgba(34, 197, 94, 0.7), 0 0 70px rgba(34, 197, 94, 0.4); }
+}
+
+@keyframes checkmark-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}

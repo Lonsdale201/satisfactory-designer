@@ -1,0 +1,22 @@
+{
+  "resources": [
+    { "id": "iron_ore", "name": "Iron Ore", "icon": "terrain", "state": "solid" },
+    { "id": "copper_ore", "name": "Copper Ore", "icon": "terrain", "state": "solid" },
+    { "id": "limestone", "name": "Limestone", "icon": "terrain", "state": "solid" },
+    { "id": "coal", "name": "Coal", "icon": "terrain", "state": "solid" },
+    { "id": "caterium_ore", "name": "Caterium Ore", "icon": "terrain", "state": "solid" },
+    { "id": "raw_quartz", "name": "Raw Quartz", "icon": "terrain", "state": "solid" },
+    { "id": "sulfur", "name": "Sulfur", "icon": "terrain", "state": "solid" },
+    { "id": "bauxite", "name": "Bauxite", "icon": "terrain", "state": "solid" },
+    { "id": "uranium", "name": "Uranium", "icon": "terrain", "state": "solid" },
+    { "id": "sam", "name": "SAM", "icon": "terrain", "state": "solid" },
+    { "id": "crude_oil", "name": "Crude Oil", "icon": "water_drop", "state": "fluid" },
+    { "id": "water", "name": "Water", "icon": "water_drop", "state": "fluid" },
+    { "id": "nitrogen_gas", "name": "Nitrogen Gas", "icon": "air", "state": "fluid" }
+  ],
+  "purityTypes": [
+    { "id": "impure", "name": "Impure", "multiplier": 0.5 },
+    { "id": "normal", "name": "Normal", "multiplier": 1.0 },
+    { "id": "pure", "name": "Pure", "multiplier": 2.0 }
+  ]
+}

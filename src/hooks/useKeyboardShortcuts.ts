@@ -1,0 +1,134 @@
+import { useEffect, useRef } from 'react';
+import { Node, Edge } from '@xyflow/react';
+
+interface UseKeyboardShortcutsProps {
+  nodesRef: React.MutableRefObject<Node[]>;
+  edgesRef: React.MutableRefObject<Edge[]>;
+  selectedEdgesRef: React.MutableRefObject<string[]>;
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  handleDuplicateNodes: (nodeIds: string[]) => void;
+}
+
+interface UseKeyboardShortcutsReturn {
+  ctrlDownRef: React.MutableRefObject<boolean>;
+  copyBufferRef: React.MutableRefObject<string[]>;
+}
+
+export function useKeyboardShortcuts({
+  nodesRef,
+  edgesRef,
+  selectedEdgesRef,
+  setNodes,
+  setEdges,
+  handleDuplicateNodes,
+}: UseKeyboardShortcutsProps): UseKeyboardShortcutsReturn {
+  const ctrlDownRef = useRef(false);
+  const copyBufferRef = useRef<string[]>([]);
+
+  // Ctrl/Cmd key tracking
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Control' || event.key === 'Meta') {
+        ctrlDownRef.current = true;
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Control' || event.key === 'Meta') {
+        ctrlDownRef.current = false;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Copy/Paste shortcuts
+  useEffect(() => {
+    const handleCopyPaste = (event: KeyboardEvent) => {
+      const isModifier = event.ctrlKey || event.metaKey;
+      if (!isModifier) return;
+
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'c') {
+        event.preventDefault();
+        copyBufferRef.current = nodesRef.current.filter((n) => n.selected).map((n) => n.id);
+      } else if (key === 'v') {
+        event.preventDefault();
+        if (copyBufferRef.current.length > 0) {
+          handleDuplicateNodes(copyBufferRef.current);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleCopyPaste);
+    return () => window.removeEventListener('keydown', handleCopyPaste);
+  }, [handleDuplicateNodes, nodesRef]);
+
+  // Delete/Backspace shortcut
+  useEffect(() => {
+    const handleDelete = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      event.preventDefault();
+
+      // Get selected items
+      const selectedNodeIds = nodesRef.current.filter((n) => n.selected).map((n) => n.id);
+      const selectedEdgeIds = selectedEdgesRef.current.length > 0
+        ? selectedEdgesRef.current
+        : edgesRef.current.filter((e) => e.selected).map((e) => e.id);
+
+      if (selectedNodeIds.length === 0 && selectedEdgeIds.length === 0) return;
+
+      // Expand stacked nodes to include children
+      const expandedNodeIds = new Set(selectedNodeIds);
+      nodesRef.current.forEach((node) => {
+        if (!selectedNodeIds.includes(node.id)) return;
+        const data = node.data as Record<string, unknown>;
+        const stackedNodeIds = data.stackedNodeIds as string[] | undefined;
+        if (stackedNodeIds) {
+          stackedNodeIds.forEach((id) => expandedNodeIds.add(id));
+        }
+      });
+
+      // Delete nodes
+      if (expandedNodeIds.size > 0) {
+        setNodes((nds) => nds.filter((node) => !expandedNodeIds.has(node.id)));
+        setEdges((eds) =>
+          eds.filter(
+            (edge) => !expandedNodeIds.has(edge.source) && !expandedNodeIds.has(edge.target)
+          )
+        );
+      }
+
+      // Delete edges
+      if (selectedEdgeIds.length > 0) {
+        setEdges((eds) => eds.filter((edge) => !selectedEdgeIds.includes(edge.id)));
+      }
+    };
+
+    window.addEventListener('keydown', handleDelete);
+    return () => window.removeEventListener('keydown', handleDelete);
+  }, [nodesRef, edgesRef, selectedEdgesRef, setNodes, setEdges]);
+
+  return {
+    ctrlDownRef,
+    copyBufferRef,
+  };
+}
