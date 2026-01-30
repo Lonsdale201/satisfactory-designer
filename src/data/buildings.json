@@ -79,7 +79,7 @@
       "category": "production",
       "defaultProduction": 30,
       "defaultPower": 4,
-      "productionOptions": [30, 60, 90],
+      "productionOptions": [2, 5, 6, 10, 12, 15, 20, 30, 50, 60, 120],
       "inputs": 1,
       "inputTypes": ["conveyor"],
       "outputTypes": ["conveyor"],
@@ -259,9 +259,9 @@
       "category": "extraction",
       "defaultProduction": 120,
       "defaultPower": 20,
-      "productionOptions": [60, 120, 240],
-      "inputs": 0,
-      "inputTypes": [],
+      "productionOptions": [30, 60, 90, 120, 180, 240, 300],
+      "inputs": 1,
+      "inputTypes": ["pipe"],
       "outputTypes": ["pipe"],
       "outputs": ["water"],
       "fixedOutput": "water"
@@ -275,9 +275,10 @@
       "defaultPower": 40,
       "productionOptions": [60, 120, 240],
       "inputs": 1,
-      "inputTypes": ["conveyor"],
-      "outputTypes": ["conveyor"],
-      "outputs": ["crude_oil"]
+      "inputTypes": ["pipe"],
+      "outputTypes": ["pipe"],
+      "outputs": ["crude_oil"],
+      "fixedOutput": "crude_oil"
     },
     {
       "id": "blender",
@@ -304,7 +305,7 @@
       "inputTypes": ["pipe"],
       "outputTypes": ["pipe"],
       "inventorySize": 400,
-      "inventoryUnit": "m3",
+      "inventoryUnit": "m³",
       "outputs": []
     },
     {

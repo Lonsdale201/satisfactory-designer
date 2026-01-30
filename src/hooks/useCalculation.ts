@@ -85,6 +85,7 @@ export function useCalculation({
           calcStatus: nodeStatuses[node.id]?.status || null,
           calcSupply: nodeStatuses[node.id]?.supply || 0,
           calcDemand: nodeStatuses[node.id]?.demand || 0,
+          storageFlow: nodeStatuses[node.id]?.storageFlow,
         }
       };
     }));
@@ -98,6 +99,7 @@ export function useCalculation({
         calcStatus: null,
         calcSupply: 0,
         calcDemand: 0,
+        storageFlow: undefined,
       },
     })));
   }, [setNodes]);

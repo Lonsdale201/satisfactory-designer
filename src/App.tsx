@@ -488,7 +488,7 @@ function AppContent() {
       const conveyorMk = (data.conveyorMk as number) || 1;
       const pipeMk = (data.pipeMk as number) || 1;
       const mkRate = isPipe
-        ? `${PIPE_RATES[pipeMk as keyof typeof PIPE_RATES]} m3/min`
+        ? `${PIPE_RATES[pipeMk as keyof typeof PIPE_RATES]} m³/min`
         : `${CONVEYOR_RATES[conveyorMk as keyof typeof CONVEYOR_RATES]}/min`;
 
       if (sourceNode.type === "resource") {

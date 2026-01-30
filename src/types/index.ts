@@ -44,6 +44,7 @@ export interface Item {
   name: string;
   category: string;
   icon: string;
+  stackSize?: number;
   inputCount?: number;
   defaultProduction?: number;
   producers?: string[];

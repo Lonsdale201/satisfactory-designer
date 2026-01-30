@@ -19,6 +19,13 @@ const formatNum = (n: number | undefined): string => {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1);
 };
 
+const formatDuration = (minutes: number | null): string => {
+  if (minutes === null || !Number.isFinite(minutes)) return '—';
+  if (minutes < 60) return `${formatNum(minutes)} min`;
+  const hours = minutes / 60;
+  return `${formatNum(hours)} h`;
+};
+
 const findItemIconUrl = (item: Item | undefined) => {
   if (!item) return '';
   const idKey = normalizeKey(item.id);
@@ -75,6 +82,14 @@ interface SimpleBuildingNodeProps {
     calcStatus?: 'optimal' | 'under' | 'over' | null;
     calcSupply?: number;
     calcDemand?: number;
+    storageFlow?: {
+      inRate: number;
+      outRate: number;
+      netRate: number;
+      outDemand: number;
+      canFill: boolean;
+      fillMinutes: number | null;
+    };
     showIo?: boolean;
     theme?: string;
     // Stack properties
@@ -108,6 +123,16 @@ const SimpleBuildingNode = memo(({ id, data, selected }: SimpleBuildingNodeProps
   const headerLabel = ((displayData.customLabel as string) || selectedBuilding?.name || 'Building').toUpperCase();
   const showIo = (displayData.showIo as boolean | undefined);
   const showIoBlock = showIo !== false && !ui.hideIoStats;
+  const storageFlow = (displayData as Record<string, unknown>).storageFlow as
+    | {
+        inRate: number;
+        outRate: number;
+        netRate: number;
+        outDemand: number;
+        canFill: boolean;
+        fillMinutes: number | null;
+      }
+    | undefined;
   const [inputsExpanded, setInputsExpanded] = useState(false);
   const theme = (displayData.theme as string) || '';
   const themeMap = {
@@ -396,7 +421,7 @@ const SimpleBuildingNode = memo(({ id, data, selected }: SimpleBuildingNodeProps
           borderBottom: isGhost ? `1px dashed ${themeColors.border}4D` : 'none',
         }}
       >
-        {!isGhost && iconUrl && !ui.hideAllImages && (
+        {!isGhost && !ui.hideAllImages && iconUrl && (
           <img
             src={iconUrl}
             alt=""
@@ -409,7 +434,7 @@ const SimpleBuildingNode = memo(({ id, data, selected }: SimpleBuildingNodeProps
             }}
           />
         )}
-        {!isGhost && !iconUrl && (
+        {!isGhost && !ui.hideAllImages && !iconUrl && (
           <div
             style={{
               width: 20,
@@ -667,34 +692,36 @@ const SimpleBuildingNode = memo(({ id, data, selected }: SimpleBuildingNodeProps
                         }}
                         title={item?.name || itemId}
                       >
-                        {icon ? (
-                          <img
-                            src={icon}
-                            alt=""
-                            style={{
-                              width: 22,
-                              height: 22,
-                              borderRadius: 6,
-                              objectFit: 'cover',
-                              background: '#0f172a',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: 22,
-                              height: 22,
-                              borderRadius: 6,
-                              background: '#0f172a',
-                              color: '#fecaca',
-                              fontSize: 10,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            ?
-                          </div>
+                        {!ui.hideAllImages && (
+                          icon ? (
+                            <img
+                              src={icon}
+                              alt=""
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 6,
+                                objectFit: 'cover',
+                                background: '#0f172a',
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 6,
+                                background: '#0f172a',
+                                color: '#fecaca',
+                                fontSize: 10,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              ?
+                            </div>
+                          )
                         )}
                         <div style={{ fontSize: 11, color: '#fecaca' }}>
                           {item?.name || itemId}
@@ -707,40 +734,75 @@ const SimpleBuildingNode = memo(({ id, data, selected }: SimpleBuildingNodeProps
             </div>
             </>
           ) : (
-            <div
-              style={{
-                padding: 8,
-                backgroundColor: '#1a1a2e',
-                borderRadius: 4,
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 4 }}>
-                Stored Item
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {selectedStoredItem && !ui.hideAllImages && (() => {
-                  const url = findItemIconUrl(selectedStoredItem);
-                  if (!url) return null;
-                  return (
-                    <img
-                      src={url}
-                      alt=""
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 6,
-                        objectFit: 'cover',
-                        background: '#0f172a',
-                      }}
-                    />
-                  );
-                })()}
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#60a5fa' }}>
-                  {selectedStoredItem ? selectedStoredItem.name : 'Not selected'}
+            <>
+              <div
+                style={{
+                  padding: 8,
+                  backgroundColor: '#1a1a2e',
+                  borderRadius: 4,
+                  marginBottom: 8,
+                }}
+              >
+                <div style={{ fontSize: 11, color: '#aaa', marginBottom: 4 }}>
+                  Stored Item
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {selectedStoredItem && !ui.hideAllImages && (() => {
+                    const url = findItemIconUrl(selectedStoredItem);
+                    if (!url) return null;
+                    return (
+                      <img
+                        src={url}
+                        alt=""
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          objectFit: 'cover',
+                          background: '#0f172a',
+                        }}
+                      />
+                    );
+                  })()}
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#60a5fa' }}>
+                    {selectedStoredItem ? selectedStoredItem.name : 'Not selected'}
+                  </div>
                 </div>
               </div>
-            </div>
+              {ui.showProductionEfficiency && storageFlow && (
+                <div
+                  style={{
+                    padding: 8,
+                    backgroundColor: '#111827',
+                    borderRadius: 6,
+                    border: '1px solid #1f2937',
+                  }}
+                >
+                  <div style={{ fontSize: 10, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Storage Flow
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div style={{ fontSize: 11, color: '#93c5fd' }}>
+                      In: {formatNum(storageFlow.inRate)}/min
+                    </div>
+                    <div style={{ fontSize: 11, color: '#93c5fd' }}>
+                      Out: {formatNum(storageFlow.outRate)}/min
+                    </div>
+                    <div style={{ fontSize: 11, color: storageFlow.netRate > 0 ? '#22c55e' : '#f59e0b' }}>
+                      Net: {formatNum(storageFlow.netRate)}/min
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                      Demand: {formatNum(storageFlow.outDemand)}/min
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11, color: storageFlow.canFill ? '#22c55e' : '#f87171' }}>
+                    {storageFlow.canFill
+                      ? `Full in ${formatDuration(storageFlow.fillMinutes)}`
+                      : 'Will not fill (drain or flat)'}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Stats */}
@@ -776,10 +838,12 @@ const SimpleBuildingNode = memo(({ id, data, selected }: SimpleBuildingNodeProps
                         const itemIcon = req.item ? findItemIconUrl(req.item) : '';
                         return (
                           <div key={`input-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {itemIcon && !ui.hideAllImages ? (
-                              <img src={itemIcon} alt="" style={{ width: 18, height: 18, borderRadius: 3, objectFit: 'cover' }} />
-                            ) : (
-                              <div style={{ width: 18, height: 18, borderRadius: 3, background: '#333', fontSize: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>?</div>
+                            {!ui.hideAllImages && (
+                              itemIcon ? (
+                                <img src={itemIcon} alt="" style={{ width: 18, height: 18, borderRadius: 3, objectFit: 'cover' }} />
+                              ) : (
+                                <div style={{ width: 18, height: 18, borderRadius: 3, background: '#333', fontSize: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>?</div>
+                              )
                             )}
                             <div style={{ flex: 1, height: 6, backgroundColor: '#333', borderRadius: 3, overflow: 'hidden' }}>
                               <div style={{ width: `${percentage}%`, height: '100%', backgroundColor: '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />

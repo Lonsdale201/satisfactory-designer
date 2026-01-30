@@ -4,6 +4,7 @@ import * as Icons from "@mui/icons-material";
 import { CONVEYOR_RATES } from "../../constants";
 import itemsData from "../../data/items.json";
 import type { Item } from "../../types";
+import { useUiSettings } from "../../contexts/UiSettingsContext";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -48,6 +49,7 @@ interface ConveyorLiftNodeProps {
 
 const ConveyorLiftNode = memo(
   ({ id, data, selected }: ConveyorLiftNodeProps) => {
+    const ui = useUiSettings();
     const isCollapsed = data.collapsed ?? false;
     const isGhost = data.isGhost ?? false;
     const isLiftGhost = data.isLiftGhost ?? false;
@@ -378,7 +380,7 @@ const ConveyorLiftNode = memo(
                 if (transportItem) {
                   return (
                     <>
-                      {iconUrl && (
+                      {!ui.hideAllImages && iconUrl && (
                         <img
                           src={iconUrl}
                           alt=""

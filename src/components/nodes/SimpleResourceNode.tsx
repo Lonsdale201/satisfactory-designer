@@ -145,7 +145,7 @@ const SimpleResourceNode = memo(({ data, selected }: SimpleResourceNodeProps) =>
           borderBottom: isGhost ? '1px dashed rgba(250, 149, 73, 0.3)' : 'none',
         }}
       >
-        {!isGhost && iconUrl && !ui.hideAllImages && (
+        {!isGhost && !ui.hideAllImages && iconUrl && (
           <img
             src={iconUrl}
             alt=""
@@ -158,7 +158,7 @@ const SimpleResourceNode = memo(({ data, selected }: SimpleResourceNodeProps) =>
             }}
           />
         )}
-        {!isGhost && !iconUrl && (
+        {!isGhost && !ui.hideAllImages && !iconUrl && (
           <div
             style={{
               width: 20,
@@ -202,7 +202,7 @@ const SimpleResourceNode = memo(({ data, selected }: SimpleResourceNodeProps) =>
       </div>
 
       {/* Ghost Body - large centered icon */}
-      {isGhost && iconUrl && !ui.hideAllImages && (
+      {isGhost && iconUrl && (
         <div style={{
           padding: 12,
           display: 'flex',

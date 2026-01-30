@@ -191,27 +191,29 @@ const SimpleTransportNode = memo(({ data, selected }: SimpleTransportNodeProps) 
               marginBottom: 8,
             }}
           >
-            {itemIcon && !ui.hideAllImages ? (
-              <img
-                src={itemIcon}
-                alt=""
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 6,
-                  objectFit: 'cover',
-                  background: '#0f172a',
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 6,
-                  background: '#0f172a',
-                }}
-              />
+            {!ui.hideAllImages && (
+              itemIcon ? (
+                <img
+                  src={itemIcon}
+                  alt=""
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    objectFit: 'cover',
+                    background: '#0f172a',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    background: '#0f172a',
+                  }}
+                />
+              )
             )}
             <div style={{ fontSize: 13, fontWeight: 600, color: '#93c5fd', flex: 1 }}>
               {item?.name || 'No delivery item'}

@@ -159,34 +159,36 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
           cursor: 'pointer',
         }}
       >
-          {iconUrl && !ui.hideAllImages ? (
-            <img
-              src={iconUrl}
-              alt=""
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 4,
-                objectFit: 'cover',
-                background: '#1a1a2e',
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 4,
-                background: '#1a1a2e',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 12,
-                color: '#8b5cf6',
-              }}
-            >
-              ⋔
-            </div>
+          {!ui.hideAllImages && (
+            iconUrl ? (
+              <img
+                src={iconUrl}
+                alt=""
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  objectFit: 'cover',
+                  background: '#1a1a2e',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  background: '#1a1a2e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  color: '#8b5cf6',
+                }}
+              >
+                ???
+              </div>
+            )
           )}
             <span style={{
               fontSize: 14,

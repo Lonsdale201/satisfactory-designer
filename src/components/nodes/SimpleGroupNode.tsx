@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { NodeProps, NodeResizer } from '@xyflow/react';
 import itemsData from '../../data/items.json';
+import { useUiSettings } from '../../contexts/UiSettingsContext';
 
 const itemImageMap = import.meta.glob('../../assets/items/*', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
 const resourceImageMap = import.meta.glob('../../assets/resources/*', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
@@ -35,6 +36,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 function SimpleGroupNode({ id, data, selected }: NodeProps) {
+  const ui = useUiSettings();
   const label = (data.label as string) || 'Production line';
   const color = (data.color as string) || '#1f2937';
   const summaryItems = (data.summaryItems as Array<{ id: string; name: string; count: number; rate: number; activeCount: number }> | undefined) || [];
@@ -183,14 +185,16 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
                         border: isInactive ? '1px solid rgba(239, 68, 68, 0.55)' : `1px solid ${color}55`,
                       }}
                     >
-                      {iconUrl ? (
-                        <img
-                          src={iconUrl}
-                          alt=""
-                          style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div style={{ width: 18, height: 18, borderRadius: 4, background: '#1f2937' }} />
+                      {!ui.hideAllImages && (
+                        iconUrl ? (
+                          <img
+                            src={iconUrl}
+                            alt=""
+                            style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{ width: 18, height: 18, borderRadius: 4, background: '#1f2937' }} />
+                        )
                       )}
                   <div style={{ fontSize: 11, color: isInactive ? '#fecaca' : '#e2e8f0' }}>
                     {item.name} x{item.count} ({item.rate.toFixed(1)}/min)

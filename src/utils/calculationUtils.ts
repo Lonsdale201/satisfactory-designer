@@ -9,7 +9,7 @@ import {
   PurityLevel,
   MinerType,
 } from "../constants/rates";
-import { NodeStatusMap, CalcStatus } from "../types/calculation";
+import { NodeStatusMap, CalcStatus, StorageFlow } from "../types/calculation";
 import { Item, Building } from "../types";
 
 interface CalculationContext {
@@ -143,6 +143,7 @@ export function calculateNodeStatuses(
         nodeStatuses,
         itemById,
         outgoingEdges,
+        incomingEdges,
       );
     }
   });
@@ -220,14 +221,31 @@ function calculateBuildingStatus(
   nodeStatuses: NodeStatusMap,
   itemById: Map<string, Item>,
   outgoingEdges: Record<string, Edge[]>,
+  incomingEdges: Record<string, Edge[]>,
 ) {
   const buildingId = (data.buildingId as string) || "";
   const building = buildings.find((b) => b.id === buildingId);
   const conveyorMk = (data.conveyorMk as number) || 1;
   const pipeMk = (data.pipeMk as number) || 1;
   const isMiner = buildingId.startsWith("miner_");
+  const isStorage = building?.category === "storage";
 
-  if (isMiner) {
+  if (isStorage) {
+    calculateStorageStatus(
+      node,
+      incoming,
+      outgoing,
+      nodes,
+      edges,
+      buildings,
+      nodeStatuses,
+      itemById,
+      outgoingEdges,
+      incomingEdges,
+      conveyorMk,
+      pipeMk,
+    );
+  } else if (isMiner) {
     calculateMinerStatus(
       node,
       data,
@@ -250,6 +268,7 @@ function calculateBuildingStatus(
       nodeStatuses,
       itemById,
       outgoingEdges,
+      incomingEdges,
     );
   }
 }
@@ -314,6 +333,314 @@ function calculateMinerStatus(
   }
 
   nodeStatuses[node.id] = { status, supply: actualOutput, demand: totalDemand };
+}
+
+function resolveIoType(types: string[] | undefined): "pipe" | "conveyor" {
+  if (!types || types.length === 0) return "conveyor";
+  const unique = new Set(types);
+  if (unique.size === 1) return types[0] as "pipe" | "conveyor";
+  if (unique.has("pipe") && !unique.has("conveyor")) return "pipe";
+  if (unique.has("conveyor") && !unique.has("pipe")) return "conveyor";
+  return "conveyor";
+}
+
+function calculateStorageFlow(
+  node: Node,
+  nodes: Node[],
+  edges: Edge[],
+  buildings: Building[],
+  itemById: Map<string, Item>,
+  outgoingEdges: Record<string, Edge[]>,
+  incomingEdges: Record<string, Edge[]>,
+  conveyorMk: number,
+  pipeMk: number,
+  visited: Set<string>,
+): StorageFlow {
+  if (visited.has(node.id)) {
+    return {
+      inRate: 0,
+      outRate: 0,
+      netRate: 0,
+      outDemand: 0,
+      canFill: false,
+      fillMinutes: null,
+    };
+  }
+  visited.add(node.id);
+
+  const data = node.data as Record<string, unknown>;
+  const buildingId = (data.buildingId as string) || "";
+  const building = buildings.find((b) => b.id === buildingId);
+  const inputTypes =
+    building?.inputTypes ?? Array(building?.inputs ?? 1).fill("conveyor");
+  const outputTypes = building?.outputTypes ?? ["conveyor"];
+  const inputCount = Math.max(inputTypes.length, 1);
+  const outputCount = Math.max(outputTypes.length, 1);
+  const inputType = resolveIoType(inputTypes);
+  const outputType = resolveIoType(outputTypes);
+
+  const inputRatePer = inputType === "pipe"
+    ? PIPE_RATES[pipeMk as PipeMk]
+    : CONVEYOR_RATES[conveyorMk as ConveyorMk];
+  const outputRatePer = outputType === "pipe"
+    ? PIPE_RATES[pipeMk as PipeMk]
+    : CONVEYOR_RATES[conveyorMk as ConveyorMk];
+  const inputCapacity = inputRatePer * inputCount;
+  const outputCapacity = outputRatePer * outputCount;
+
+  const getIncomingItemId = (): string | undefined => {
+    const incoming = incomingEdges[node.id] || [];
+    for (const edge of incoming) {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      if (!sourceNode) continue;
+      const sourceData = sourceNode.data as Record<string, unknown>;
+      if (sourceNode.type === "resource") {
+        return sourceData.resourceId as string | undefined;
+      }
+      if (sourceNode.type === "building") {
+        return (
+          (sourceData.storedItem as string | undefined) ||
+          (sourceData.outputItem as string | undefined)
+        );
+      }
+      if (sourceNode.type === "transport") {
+        return sourceData.deliveryItem as string | undefined;
+      }
+      if (sourceNode.type === "conveyorLift") {
+        return sourceData.transportingItem as string | undefined;
+      }
+    }
+    return undefined;
+  };
+
+  const storedItemId =
+    (data.storedItem as string | undefined) || getIncomingItemId();
+  const storedItem = storedItemId ? itemById.get(storedItemId) : undefined;
+  const stackSize = storedItem?.stackSize ?? 1;
+  const inventoryUnit = (building?.inventoryUnit || "").toLowerCase();
+  const isSlotInventory =
+    inventoryUnit.includes("slot") || inventoryUnit.includes("slots");
+  const capacityUnits = isSlotInventory
+    ? (building?.inventorySize ?? 0) * stackSize
+    : building?.inventorySize ?? 0;
+
+  const incoming = incomingEdges[node.id] || [];
+  let incomingRate = 0;
+  incoming.forEach((edge) => {
+    const sourceNode = nodes.find((n) => n.id === edge.source);
+    if (!sourceNode) return;
+    const sourceOutgoing = outgoingEdges[sourceNode.id] || [];
+    const splitRatio =
+      sourceOutgoing.length > 0 ? 1 / sourceOutgoing.length : 1;
+    const sourceRate = getNodeOutputRate(
+      sourceNode,
+      nodes,
+      edges,
+      buildings,
+      itemById,
+      outgoingEdges,
+      incomingEdges,
+      new Set(visited),
+    );
+    incomingRate += sourceRate * splitRatio;
+  });
+  incomingRate = Math.min(incomingRate, inputCapacity);
+
+  const outgoing = outgoingEdges[node.id] || [];
+  let outDemand = 0;
+  outgoing.forEach((edge) => {
+    const targetNode = nodes.find((n) => n.id === edge.target);
+    if (targetNode?.type === "building") {
+      outDemand += getDemandRate(targetNode, nodes, itemById);
+    }
+  });
+
+  const outRate = Math.min(outDemand, outputCapacity, incomingRate);
+  const netRate = incomingRate - outRate;
+  const canFill = netRate > 0 && capacityUnits > 0;
+  const fillMinutes = canFill ? capacityUnits / netRate : null;
+
+  return {
+    inRate: incomingRate,
+    outRate,
+    netRate,
+    outDemand,
+    canFill,
+    fillMinutes,
+  };
+}
+
+function getNodeOutputRate(
+  node: Node,
+  nodes: Node[],
+  edges: Edge[],
+  buildings: Building[],
+  itemById: Map<string, Item>,
+  outgoingEdges: Record<string, Edge[]>,
+  incomingEdges: Record<string, Edge[]>,
+  visited: Set<string>,
+): number {
+  if (visited.has(node.id)) return 0;
+  const data = node.data as Record<string, unknown>;
+
+  if (node.type === "resource") {
+    const purity = (data.purity as string) || "normal";
+    return PURITY_RATES[purity as PurityLevel] || 60;
+  }
+
+  if (node.type === "transport") {
+    const conveyorMk = (data.conveyorMk as number) || 1;
+    const outputCount = (data.outputCount as number) || 1;
+    const beltCapacity = CONVEYOR_RATES[conveyorMk as ConveyorMk];
+    return beltCapacity * outputCount;
+  }
+
+  if (node.type === "building") {
+    const buildingId = (data.buildingId as string) || "";
+    const building = buildings.find((b) => b.id === buildingId);
+    const conveyorMk = (data.conveyorMk as number) || 1;
+    const pipeMk = (data.pipeMk as number) || 1;
+    if (building?.category === "storage") {
+      const flow = calculateStorageFlow(
+        node,
+        nodes,
+        edges,
+        buildings,
+        itemById,
+        outgoingEdges,
+        incomingEdges,
+        conveyorMk,
+        pipeMk,
+        new Set(visited),
+      );
+      return flow.outRate;
+    }
+
+    if (buildingId.startsWith("miner_")) {
+      const minerIncoming = edges.filter((e) => e.target === node.id);
+      const resourceEdge = minerIncoming.find((e) => {
+        const resNode = nodes.find((n) => n.id === e.source);
+        return resNode?.type === "resource";
+      });
+      if (!resourceEdge) return 0;
+      const resourceNode = nodes.find((n) => n.id === resourceEdge.source);
+      const resourceData = resourceNode?.data as Record<string, unknown>;
+      const purity = (resourceData?.purity as string) || "normal";
+      const baseRate = PURITY_RATES[purity as PurityLevel] || 60;
+
+      const stackNodes = getStackNodes(node, nodes);
+      const totalExtraction = stackNodes.reduce((sum, stackNode) => {
+        const stackData = stackNode.data as Record<string, unknown>;
+        const stackBuildingId =
+          (stackData.buildingId as string) || buildingId;
+        const minerMult =
+          MINER_MULTIPLIERS[stackBuildingId as MinerType] || 1;
+        return sum + baseRate * minerMult;
+      }, 0);
+
+      const isPipe = building?.outputTypes?.[0] === "pipe";
+      const beltCapacity = isPipe
+        ? PIPE_RATES[pipeMk as PipeMk]
+        : CONVEYOR_RATES[conveyorMk as ConveyorMk];
+      return Math.min(totalExtraction, beltCapacity);
+    }
+
+    const stackNodes = getStackNodes(node, nodes);
+    const production = stackNodes.reduce((sum, stackNode) => {
+      const stackData = stackNode.data as Record<string, unknown>;
+      return sum + ((stackData.production as number) || 0);
+    }, 0);
+    const isPipe = building?.outputTypes?.[0] === "pipe";
+    const beltCapacity = isPipe
+      ? PIPE_RATES[pipeMk as PipeMk]
+      : CONVEYOR_RATES[conveyorMk as ConveyorMk];
+    return Math.min(production, beltCapacity);
+  }
+
+  const producers = traceBackToProducers(
+    node,
+    nodes,
+    edges,
+    incomingEdges,
+    outgoingEdges,
+    new Set(visited),
+  );
+
+  let totalSupply = 0;
+  producers.forEach(({ node: producerNode, splitRatio }) => {
+    const producerData = producerNode.data as Record<string, unknown>;
+    const producerType = producerNode.type;
+    if (producerType !== "building") return;
+    const producerBuildingId = (producerData.buildingId as string) || "";
+    const isMiner = producerBuildingId.startsWith("miner_");
+    if (isMiner) {
+      const minerIncoming = edges.filter((e) => e.target === producerNode.id);
+      const resourceEdge = minerIncoming.find((e) => {
+        const resNode = nodes.find((n) => n.id === e.source);
+        return resNode?.type === "resource";
+      });
+      if (resourceEdge) {
+        const resourceNode = nodes.find((n) => n.id === resourceEdge.source);
+        const resourceData = resourceNode?.data as Record<string, unknown>;
+        const purity = (resourceData?.purity as string) || "normal";
+        const baseRate = PURITY_RATES[purity as PurityLevel] || 60;
+        const minerMult =
+          MINER_MULTIPLIERS[producerBuildingId as MinerType] || 1;
+        totalSupply += baseRate * minerMult * splitRatio;
+      }
+    } else {
+      const stackNodes = getStackNodes(producerNode, nodes);
+      const producerProduction = stackNodes.reduce((sum, stackNode) => {
+        const stackData = stackNode.data as Record<string, unknown>;
+        return sum + ((stackData.production as number) || 0);
+      }, 0);
+      totalSupply += producerProduction * splitRatio;
+    }
+  });
+
+  return totalSupply;
+}
+
+function calculateStorageStatus(
+  node: Node,
+  incoming: Edge[],
+  outgoing: Edge[],
+  nodes: Node[],
+  edges: Edge[],
+  buildings: Building[],
+  nodeStatuses: NodeStatusMap,
+  itemById: Map<string, Item>,
+  outgoingEdges: Record<string, Edge[]>,
+  incomingEdges: Record<string, Edge[]>,
+  conveyorMk: number,
+  pipeMk: number,
+) {
+  const flow = calculateStorageFlow(
+    node,
+    nodes,
+    edges,
+    buildings,
+    itemById,
+    outgoingEdges,
+    incomingEdges,
+    conveyorMk,
+    pipeMk,
+    new Set(),
+  );
+
+  let status: CalcStatus = null;
+  if (outgoing.length > 0 && flow.outDemand > 0) {
+    status = determineStatus(flow.inRate, flow.outDemand);
+  } else if (incoming.length > 0) {
+    status = "over";
+  }
+
+  nodeStatuses[node.id] = {
+    status,
+    supply: flow.inRate,
+    demand: flow.outDemand,
+    storageFlow: flow,
+  };
 }
 
 // Types that pass through items without producing them
@@ -407,6 +734,7 @@ function calculateProductionBuildingStatus(
   nodeStatuses: NodeStatusMap,
   itemById: Map<string, Item>,
   outgoingEdges: Record<string, Edge[]>,
+  incomingEdges: Record<string, Edge[]>,
 ) {
   let totalSupply = 0;
 
@@ -420,8 +748,30 @@ function calculateProductionBuildingStatus(
     if (sourceType === "building") {
       const sourceBuildingId = (sourceData.buildingId as string) || "";
       const isMinerSource = sourceBuildingId.startsWith("miner_");
+      const sourceBuilding = buildings.find((b) => b.id === sourceBuildingId);
+      const isStorageSource = sourceBuilding?.category === "storage";
 
-      if (isMinerSource) {
+      if (isStorageSource) {
+        const sourceConveyorMk = (sourceData.conveyorMk as number) || 1;
+        const sourcePipeMk = (sourceData.pipeMk as number) || 1;
+        const flow = calculateStorageFlow(
+          sourceNode,
+          nodes,
+          edges,
+          buildings,
+          itemById,
+          outgoingEdges,
+          incomingEdges,
+          sourceConveyorMk,
+          sourcePipeMk,
+          new Set(),
+        );
+        const sourceOutgoing = outgoingEdges[sourceNode.id] || [];
+        const splitRatio =
+          sourceOutgoing.length > 0 ? 1 / sourceOutgoing.length : 1;
+        totalSupply += flow.outRate * splitRatio;
+      } else if (isMinerSource) {
+
         // For miners, calculate output based on resource purity and miner multiplier
         // Find the resource connected to this miner
         const minerIncoming = edges.filter((e) => e.target === sourceNode.id);
@@ -471,9 +821,6 @@ function calculateProductionBuildingStatus(
 
         const sourceConveyorMk = (sourceData.conveyorMk as number) || 1;
         const sourcePipeMk = (sourceData.pipeMk as number) || 1;
-        const sourceBuilding = buildings.find(
-          (b) => b.id === sourceData.buildingId,
-        );
         const isPipe = sourceBuilding?.outputTypes?.[0] === "pipe";
         const beltCapacity = isPipe
           ? PIPE_RATES[sourcePipeMk as PipeMk]
@@ -495,12 +842,11 @@ function calculateProductionBuildingStatus(
     } else {
       // For other node types (storage, conveyorLift, splitter, etc.)
       // Trace back to find the original producer
-      const { incomingEdges: incomingEdgesMap } = buildAdjacencyLists(edges);
       const producers = traceBackToProducers(
         sourceNode,
         nodes,
         edges,
-        incomingEdgesMap,
+        incomingEdges,
         outgoingEdges,
       );
 

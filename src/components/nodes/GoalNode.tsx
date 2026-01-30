@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { Item } from "../../types";
 import itemsData from "../../data/items.json";
+import { useUiSettings } from "../../contexts/UiSettingsContext";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -53,6 +54,7 @@ interface GoalNodeProps {
 }
 
 const GoalNode = memo(({ id, data }: GoalNodeProps) => {
+  const ui = useUiSettings();
   const selectedItem = items.find((i) => i.id === data.itemId);
   const isCollapsed = data.collapsed ?? false;
   const targetRate = data.targetRate || selectedItem?.defaultProduction || 1;
@@ -168,7 +170,7 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
           }}
         >
           <span style={{ fontSize: 18 }}>🎯</span>
-          {iconUrl && (
+          {!ui.hideAllImages && iconUrl && (
             <img
               src={iconUrl}
               alt=""
@@ -300,7 +302,7 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
                         >
                           {isConnected ? "✓" : "✗"}
                         </span>
-                        {itemIcon && (
+                        {!ui.hideAllImages && itemIcon && (
                           <img
                             src={itemIcon}
                             alt=""

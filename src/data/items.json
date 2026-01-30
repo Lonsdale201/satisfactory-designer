@@ -4,13 +4,15 @@
       "id": "iron_ore",
       "name": "Iron Ore",
       "category": "ore",
-      "icon": "terrain"
+      "icon": "terrain",
+      "stackSize": 100
     },
     {
       "id": "copper_ore",
       "name": "Copper Ore",
       "category": "ore",
-      "icon": "terrain"
+      "icon": "terrain",
+      "stackSize": 100
     },
     {
       "id": "limestone",
@@ -22,7 +24,8 @@
       "id": "coal",
       "name": "Coal",
       "category": "ore",
-      "icon": "terrain"
+      "icon": "terrain",
+      "stackSize": 100
     },
     {
       "id": "caterium_ore",

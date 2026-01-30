@@ -190,6 +190,10 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
 
   const isCollapsed = Boolean(nodeData?.collapsed);
   const customProduction = Boolean(nodeData?.customProduction);
+  const hasPipe = Boolean(
+    selectedBuilding?.inputTypes?.includes('pipe') ||
+    selectedBuilding?.outputTypes?.includes('pipe'),
+  );
 
   const handleResourceChange = useCallback((_: unknown, newValue: Resource | null) => {
     if (!newValue) return;
@@ -939,23 +943,25 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                 </Select>
               </FormControl>
 
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: '#9ca3af' }}>Pipe</InputLabel>
-                <Select
-                  value={(nodeData?.pipeMk as number) || 1}
-                  label="Pipe"
-                  onChange={handlePipeMkChange}
-                  sx={{
-                    bgcolor: '#0f172a',
-                    color: '#fff',
-                    '& .MuiSelect-icon': { color: '#9ca3af' },
-                  }}
-                >
-                  <MenuItem value={1}>Mk.1 (300 m3/min)</MenuItem>
-                  <MenuItem value={2}>Mk.2 (600 m3/min)</MenuItem>
-                  <MenuItem value={3}>Mk.3 (900 m3/min)</MenuItem>
-                </Select>
-              </FormControl>
+              {hasPipe && (
+                <FormControl fullWidth size="small">
+                  <InputLabel sx={{ color: '#9ca3af' }}>Pipe</InputLabel>
+                  <Select
+                    value={(nodeData?.pipeMk as number) || 1}
+                    label="Pipe"
+                    onChange={handlePipeMkChange}
+                    sx={{
+                      bgcolor: '#0f172a',
+                      color: '#fff',
+                      '& .MuiSelect-icon': { color: '#9ca3af' },
+                    }}
+                  >
+                    <MenuItem value={1}>Mk.1 (300 m³/min)</MenuItem>
+                    <MenuItem value={2}>Mk.2 (600 m³/min)</MenuItem>
+                    <MenuItem value={3}>Mk.3 (900 m³/min)</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
             </Box>
 
             {/* Building Type */}
