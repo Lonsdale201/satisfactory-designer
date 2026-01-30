@@ -10,9 +10,8 @@ export const CONVEYOR_RATES = {
 } as const;
 
 export const PIPE_RATES = {
-  1: 300,  // Mk.1
-  2: 600,  // Mk.2
-  3: 900,  // Mk.3 (placeholder for future)
+  1: 300,  // Mk.1 - 300 m³/min
+  2: 600,  // Mk.2 - 600 m³/min
 } as const;
 
 export const PURITY_RATES = {

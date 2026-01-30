@@ -260,8 +260,8 @@
       "defaultProduction": 120,
       "defaultPower": 20,
       "productionOptions": [30, 60, 90, 120, 180, 240, 300],
-      "inputs": 1,
-      "inputTypes": ["pipe"],
+      "inputs": 0,
+      "inputTypes": [],
       "outputTypes": ["pipe"],
       "outputs": ["water"],
       "fixedOutput": "water"

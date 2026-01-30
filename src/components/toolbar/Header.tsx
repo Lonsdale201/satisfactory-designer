@@ -1,5 +1,15 @@
 import { memo, useState } from "react";
-import { Box, Typography, IconButton, Tooltip } from "@mui/material";
+import {
+  Box,
+  Typography,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+} from "@mui/material";
 import * as Icons from "@mui/icons-material";
 import { Node } from "@xyflow/react";
 import SettingsMenu, { UiSettings } from "./SettingsMenu";
@@ -21,6 +31,13 @@ interface HeaderProps {
   handleClearAll: () => void;
   uiSettings: UiSettings;
   setUiSettings: React.Dispatch<React.SetStateAction<UiSettings>>;
+  appVersion: string;
+  changelogEntries: Array<{
+    version: string;
+    title: string;
+    changes: string[];
+  }>;
+  repoUrl: string;
 }
 
 const Header = memo(
@@ -41,10 +58,15 @@ const Header = memo(
     handleClearAll,
     uiSettings,
     setUiSettings,
+    appVersion,
+    changelogEntries,
+    repoUrl,
   }: HeaderProps) => {
     const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(
       null,
     );
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [changelogOpen, setChangelogOpen] = useState(false);
 
     const openSettings = (event: React.MouseEvent<HTMLElement>) => {
       setSettingsAnchor(event.currentTarget);
@@ -55,6 +77,7 @@ const Header = memo(
     };
 
     return (
+      <>
       <Box
         sx={{
           position: "absolute",
@@ -65,7 +88,7 @@ const Header = memo(
           bgcolor: "rgba(15, 23, 42, 0.85)",
           px: 2,
           py: 1,
-          borderRadius: 999,
+          borderRadius: "8px",
           border: "1px solid rgba(148, 163, 184, 0.2)",
           boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
           backdropFilter: "blur(8px)",
@@ -82,11 +105,25 @@ const Header = memo(
             display: "flex",
             alignItems: "center",
             gap: 1,
-            px: 1,
+            px: 0.5,
           }}
         >
           <span style={{ color: "#fa9549" }}>Satisfactory</span>
-          <span style={{ color: "#e2e8f0" }}>Designer</span>
+          <span style={{ color: "#e2e8f0" }}>
+            Designer
+            <span
+              style={{
+                color: "#fa9549",
+                fontSize: 10,
+                fontWeight: 700,
+                marginLeft: 4,
+                verticalAlign: "sub",
+                letterSpacing: "0.2px",
+              }}
+            >
+              v{appVersion}
+            </span>
+          </span>
         </Typography>
 
         {/* Action group */}
@@ -97,7 +134,7 @@ const Header = memo(
             gap: 0.5,
             px: 1,
             py: 0.5,
-            borderRadius: 999,
+            borderRadius: 8,
             border: "1px solid rgba(148, 163, 184, 0.2)",
             bgcolor: "rgba(15, 23, 42, 0.6)",
           }}
@@ -199,7 +236,7 @@ const Header = memo(
             gap: 0.5,
             px: 1,
             py: 0.5,
-            borderRadius: 999,
+            borderRadius: 8,
             border: "1px solid rgba(148, 163, 184, 0.2)",
             bgcolor: "rgba(15, 23, 42, 0.6)",
           }}
@@ -233,7 +270,7 @@ const Header = memo(
           <Tooltip title="Clear all (delete everything)">
             <IconButton
               size="small"
-              onClick={handleClearAll}
+              onClick={() => setConfirmOpen(true)}
               sx={{
                 color: "#f87171",
                 "&:hover": { color: "#fff", bgcolor: "rgba(248,113,113,0.2)" },
@@ -265,6 +302,126 @@ const Header = memo(
           setUiSettings={setUiSettings}
         />
       </Box>
+
+      {/* Top-right Info/Changelog bar */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          px: 1,
+          py: 0.5,
+          borderRadius: "8px",
+          bgcolor: "rgba(15, 23, 42, 0.75)",
+          border: "1px solid rgba(148, 163, 184, 0.25)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => setChangelogOpen(true)}
+          sx={{
+            color: "#e2e8f0",
+            textTransform: "uppercase",
+            fontSize: 12,
+            fontWeight: 700,
+            px: 1,
+            borderRadius: 6,
+            border: "1px solid rgba(148, 163, 184, 0.25)",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+          }}
+        >
+          Changelog
+        </Button>
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => window.open(repoUrl, "_blank", "noopener,noreferrer")}
+          sx={{
+            color: "#e2e8f0",
+            textTransform: "uppercase",
+            fontSize: 12,
+            fontWeight: 700,
+            px: 1,
+            borderRadius: 6,
+            border: "1px solid rgba(148, 163, 184, 0.25)",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+          }}
+        >
+          Info
+        </Button>
+      </Box>
+
+      {/* Confirm delete modal */}
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        PaperProps={{ sx: { bgcolor: "#111827", color: "#e5e7eb" } }}
+      >
+        <DialogTitle>Delete everything?</DialogTitle>
+        <DialogContent sx={{ color: "#cbd5f5" }}>
+          This will remove all nodes, edges, and saved data. This cannot be
+          undone.
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmOpen(false)}
+            sx={{ color: "#e2e8f0" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setConfirmOpen(false);
+              handleClearAll();
+            }}
+            variant="contained"
+            sx={{ bgcolor: "#b91c1c", "&:hover": { bgcolor: "#dc2626" } }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Changelog modal */}
+      <Dialog
+        open={changelogOpen}
+        onClose={() => setChangelogOpen(false)}
+        PaperProps={{ sx: { bgcolor: "#111827", color: "#e5e7eb", minWidth: 360 } }}
+      >
+        <DialogTitle>Changelog v{appVersion}</DialogTitle>
+        <DialogContent>
+          {changelogEntries.map((entry) => (
+            <Box key={entry.version} sx={{ mb: 1.5 }}>
+              <Typography sx={{ fontWeight: 700, color: "#e2e8f0", fontSize: 13 }}>
+                {entry.version} — {entry.title}
+              </Typography>
+              <Box sx={{ pl: 1, mt: 0.5 }}>
+                {entry.changes.map((change, index) => (
+                  <Typography
+                    key={`${entry.version}-${index}`}
+                    sx={{ fontSize: 12, color: "#cbd5f5" }}
+                  >
+                    • {change}
+                  </Typography>
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button onClick={() => setChangelogOpen(false)} sx={{ color: "#e2e8f0" }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+      </>
     );
   },
 );

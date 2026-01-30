@@ -9,6 +9,7 @@ export interface UiSettings {
   showProductionEfficiency: boolean;
   hideAllImages: boolean;
   hideIoStats: boolean;
+  hideMinimap: boolean;
 }
 
 interface SettingsMenuProps {
@@ -150,6 +151,23 @@ const SettingsMenu = memo(
               />
             }
             label="Hide input/output stats"
+          />
+        </MenuItem>
+        <MenuItem>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={uiSettings.hideMinimap}
+                onChange={(e) =>
+                  setUiSettings((s) => ({
+                    ...s,
+                    hideMinimap: e.target.checked,
+                  }))
+                }
+              />
+            }
+            label="Hide minimap"
           />
         </MenuItem>
       </Menu>

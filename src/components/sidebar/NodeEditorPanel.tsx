@@ -194,6 +194,10 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     selectedBuilding?.inputTypes?.includes('pipe') ||
     selectedBuilding?.outputTypes?.includes('pipe'),
   );
+  const hasConveyor = Boolean(
+    selectedBuilding?.inputTypes?.includes('conveyor') ||
+    selectedBuilding?.outputTypes?.includes('conveyor'),
+  );
 
   const handleResourceChange = useCallback((_: unknown, newValue: Resource | null) => {
     if (!newValue) return;
@@ -906,63 +910,66 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
             )}
 
             {/* Belt & Pipe Settings */}
-            <Box
-              component="fieldset"
-              sx={{
-                border: '1px solid #1f2937',
-                borderRadius: 1,
-                p: 1.5,
-                m: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
-                Belt & Pipe Settings
-              </Typography>
+            {(hasConveyor || hasPipe) && (
+              <Box
+                component="fieldset"
+                sx={{
+                  border: '1px solid #1f2937',
+                  borderRadius: 1,
+                  p: 1.5,
+                  m: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.5,
+                }}
+              >
+                <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
+                  Belt & Pipe Settings
+                </Typography>
 
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: '#9ca3af' }}>Conveyor</InputLabel>
-                <Select
-                  value={(nodeData?.conveyorMk as number) || 1}
-                  label="Conveyor"
-                  onChange={handleConveyorMkChange}
-                  sx={{
-                    bgcolor: '#0f172a',
-                    color: '#fff',
-                    '& .MuiSelect-icon': { color: '#9ca3af' },
-                  }}
-                >
-                  <MenuItem value={1}>Mk.1 (60/min)</MenuItem>
-                  <MenuItem value={2}>Mk.2 (120/min)</MenuItem>
-                  <MenuItem value={3}>Mk.3 (270/min)</MenuItem>
-                  <MenuItem value={4}>Mk.4 (480/min)</MenuItem>
-                  <MenuItem value={5}>Mk.5 (780/min)</MenuItem>
-                  <MenuItem value={6}>Mk.6 (1200/min)</MenuItem>
-                </Select>
-              </FormControl>
+                {hasConveyor && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel sx={{ color: '#9ca3af' }}>Conveyor</InputLabel>
+                    <Select
+                      value={(nodeData?.conveyorMk as number) || 1}
+                      label="Conveyor"
+                      onChange={handleConveyorMkChange}
+                      sx={{
+                        bgcolor: '#0f172a',
+                        color: '#fff',
+                        '& .MuiSelect-icon': { color: '#9ca3af' },
+                      }}
+                    >
+                      <MenuItem value={1}>Mk.1 (60/min)</MenuItem>
+                      <MenuItem value={2}>Mk.2 (120/min)</MenuItem>
+                      <MenuItem value={3}>Mk.3 (270/min)</MenuItem>
+                      <MenuItem value={4}>Mk.4 (480/min)</MenuItem>
+                      <MenuItem value={5}>Mk.5 (780/min)</MenuItem>
+                      <MenuItem value={6}>Mk.6 (1200/min)</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
 
-              {hasPipe && (
-                <FormControl fullWidth size="small">
-                  <InputLabel sx={{ color: '#9ca3af' }}>Pipe</InputLabel>
-                  <Select
-                    value={(nodeData?.pipeMk as number) || 1}
-                    label="Pipe"
-                    onChange={handlePipeMkChange}
-                    sx={{
-                      bgcolor: '#0f172a',
-                      color: '#fff',
-                      '& .MuiSelect-icon': { color: '#9ca3af' },
-                    }}
-                  >
-                    <MenuItem value={1}>Mk.1 (300 m³/min)</MenuItem>
-                    <MenuItem value={2}>Mk.2 (600 m³/min)</MenuItem>
-                    <MenuItem value={3}>Mk.3 (900 m³/min)</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            </Box>
+                {hasPipe && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel sx={{ color: '#9ca3af' }}>Pipe</InputLabel>
+                    <Select
+                      value={(nodeData?.pipeMk as number) || 1}
+                      label="Pipe"
+                      onChange={handlePipeMkChange}
+                      sx={{
+                        bgcolor: '#0f172a',
+                        color: '#fff',
+                        '& .MuiSelect-icon': { color: '#9ca3af' },
+                      }}
+                    >
+                      <MenuItem value={1}>Mk.1 (300 m³/min)</MenuItem>
+                      <MenuItem value={2}>Mk.2 (600 m³/min)</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              </Box>
+            )}
 
             {/* Building Type */}
             <Box

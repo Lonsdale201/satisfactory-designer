@@ -118,6 +118,7 @@ interface FlowCanvasProps {
   onNodeDragStart: (event: unknown, node: Node) => void;
   onNodeDragStop: (event: unknown, node: Node) => void;
   isDragging: boolean;
+  hideMinimap: boolean;
   nodesDraggable: boolean;
   nodesConnectable: boolean;
   elementsSelectable: boolean;
@@ -146,6 +147,7 @@ const FlowCanvas = memo(
     onNodeDragStart,
     onNodeDragStop,
     isDragging,
+    hideMinimap,
     nodesDraggable,
     nodesConnectable,
     elementsSelectable,
@@ -181,7 +183,7 @@ const FlowCanvas = memo(
       maxZoom={2}
       fitView
     >
-      {!isDragging && (
+      {!isDragging && !hideMinimap && (
         <MiniMap
           style={{
             bottom: 20,
@@ -231,6 +233,18 @@ function AppContent() {
   const [uiSettings, setUiSettings] = useState(defaultUiSettings);
   const [currentLayer, setCurrentLayer] = useState(1);
   const [interactionLocked, setInteractionLocked] = useState(false);
+  const appVersion = "0.1";
+  const changelogEntries = [
+    {
+      version: "0.1",
+      title: "Initial changelog",
+      changes: [
+        "Storage flow calc (fill time, net rate, demand).",
+        "Resource + extractor pipe fixes, UI tweaks.",
+      ],
+    },
+  ];
+  const repoUrl = import.meta.env.VITE_REPO_URL || "https://github.com";
   const allowPanelRef = useRef(false);
   const ignoreSelectionRef = useRef(false);
   const selectedNodeIdRef = useRef<string | null>(null);
@@ -1954,6 +1968,9 @@ function AppContent() {
           handleClearAll={handleClearAll}
           uiSettings={uiSettings}
           setUiSettings={setUiSettings}
+          appVersion={appVersion}
+          changelogEntries={changelogEntries}
+          repoUrl={repoUrl}
         />
 
         <UiSettingsProvider value={uiSettings}>
@@ -1978,6 +1995,7 @@ function AppContent() {
             onNodeDragStart={handleNodeDragStart}
             onNodeDragStop={handleNodeDragStop}
             isDragging={isDragging}
+            hideMinimap={uiSettings.hideMinimap}
             nodesDraggable={!interactionLocked}
             nodesConnectable={!interactionLocked}
             elementsSelectable={!interactionLocked}
