@@ -490,10 +490,10 @@ const SimpleBuildingNode = memo(
                   }}
                 >
                   {displayData.calcStatus === "optimal"
-                    ? "OK"
+                    ? "✓"
                     : displayData.calcStatus === "under"
                       ? "!"
-                      : "^"}
+                      : "⚡"}
                 </div>
               )}
 

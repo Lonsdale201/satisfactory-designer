@@ -401,7 +401,7 @@ function Sidebar({
                           type: "group",
                           data: {
                             label: "Production line",
-                            color: "#0ea5e9",
+                            theme: "orange",
                           },
                         }),
                       );
@@ -410,7 +410,7 @@ function Sidebar({
                     onClick={() =>
                       onAddNode("group", {
                         label: "Production line",
-                        color: "#0ea5e9",
+                        theme: "orange",
                       })
                     }
                     sx={{

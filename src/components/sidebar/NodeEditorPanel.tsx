@@ -21,6 +21,7 @@ import { Building, Item } from '../../types';
 import buildingsData from '../../data/buildings.json';
 import itemsData from '../../data/items.json';
 import { PROJECT_ASSEMBLY_ITEM_IDS } from '../nodes/GoalNode';
+import { themeMap } from '../../constants/themeMap';
 
 const buildings: Building[] = buildingsData.buildings as Building[];
 const items: Item[] = itemsData.items;
@@ -39,15 +40,6 @@ const PURITY_OPTIONS = [
   { id: 'impure', label: 'Impure' },
   { id: 'normal', label: 'Normal' },
   { id: 'pure', label: 'Pure' },
-];
-
-const groupColors = [
-  { label: 'Blue', value: '#0ea5e9' },
-  { label: 'Teal', value: '#14b8a6' },
-  { label: 'Purple', value: '#8b5cf6' },
-  { label: 'Amber', value: '#f59e0b' },
-  { label: 'Rose', value: '#f43f5e' },
-  { label: 'Slate', value: '#64748b' },
 ];
 
 interface NodeEditorPanelProps {
@@ -112,7 +104,16 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     return items;
   }, [selectedBuilding?.id]);
 
-  const groupColorValue = (nodeData?.color as string) || '#0ea5e9';
+  const legacyGroupColor = nodeData?.color as string | undefined;
+  const legacyGroupTheme =
+    legacyGroupColor &&
+    Object.entries(themeMap).find(
+      ([, theme]) => theme.header.toLowerCase() === legacyGroupColor.toLowerCase(),
+    )?.[0];
+  const groupThemeValue =
+    (nodeData?.theme as string) || legacyGroupTheme || '';
+  const groupThemeColors =
+    themeMap[groupThemeValue as keyof typeof themeMap] || themeMap.orange;
   const nodeThemeValue = (nodeData?.theme as string) || '';
 
   const themeOptions = [
@@ -366,14 +367,32 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                   '& .MuiInputLabel-root': { color: '#9ca3af' },
                 }}
               />
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: '#aaa' }}>Theme</InputLabel>
+                <Select
+                  value={groupThemeValue}
+                  label="Theme"
+                  onChange={(e) => dispatchChange('theme', e.target.value)}
+                  sx={{
+                    bgcolor: '#0f172a',
+                    color: '#fff',
+                    '& .MuiSelect-icon': { color: '#aaa' },
+                  }}
+                >
+                  {themeOptions.map((theme) => (
+                    <MenuItem key={theme.value} value={theme.value}>
+                      {theme.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 size="small"
-                type="number"
-                label="Target Power (MW)"
-                value={Number(nodeData?.targetPower || 0)}
-                onChange={(e) =>
-                  dispatchChange('targetPower', parseFloat(e.target.value) || 0)
-                }
+                label="Comment"
+                value={(nodeData?.comment as string) || ''}
+                onChange={(e) => dispatchChange('comment', e.target.value)}
+                multiline
+                minRows={3}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#0f172a',
@@ -382,40 +401,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                   '& .MuiInputLabel-root': { color: '#9ca3af' },
                 }}
               />
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: '#aaa' }}>Color</InputLabel>
-                <Select
-                  value={groupColorValue}
-                  label="Color"
-                  onChange={(e) => dispatchChange('color', e.target.value)}
-                  sx={{
-                    bgcolor: '#0f172a',
-                    color: '#fff',
-                    '& .MuiSelect-icon': { color: '#aaa' },
-                  }}
-                >
-                  {groupColors.map((color) => (
-                    <MenuItem key={color.value} value={color.value}>
-                      {color.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  const custom = new CustomEvent('groupSummary', { detail: { nodeId: node.id } });
-                  window.dispatchEvent(custom);
-                }}
-                sx={{
-                  borderColor: groupColorValue,
-                  color: groupColorValue,
-                  '&:hover': { borderColor: groupColorValue, bgcolor: `${groupColorValue}22` },
-                }}
-              >
-                Get Summary
-              </Button>
             </>
           )}
           {node?.type !== 'group' && (
@@ -440,6 +425,55 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
             </FormControl>
           )}
         </Box>
+        {node?.type === 'group' && (
+          <Box
+            component="fieldset"
+            sx={{
+              border: '1px solid #1f2937',
+              borderRadius: 1,
+              p: 1.5,
+              m: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+            }}
+          >
+            <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
+              Goals
+            </Typography>
+            <TextField
+              size="small"
+              type="number"
+              label="Target Power (MW)"
+              value={Number(nodeData?.targetPower || 0)}
+              onChange={(e) =>
+                dispatchChange('targetPower', parseFloat(e.target.value) || 0)
+              }
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: '#0f172a',
+                  color: '#fff',
+                },
+                '& .MuiInputLabel-root': { color: '#9ca3af' },
+              }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                const custom = new CustomEvent('groupSummary', { detail: { nodeId: node.id } });
+                window.dispatchEvent(custom);
+              }}
+              sx={{
+                borderColor: groupThemeColors.header,
+                color: groupThemeColors.header,
+                '&:hover': { borderColor: groupThemeColors.header, bgcolor: `${groupThemeColors.header}22` },
+              }}
+            >
+              Get Summary
+            </Button>
+          </Box>
+        )}
 
         {node?.type === 'smartSplitter' && (
           <>

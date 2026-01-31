@@ -31,6 +31,7 @@
   - Trailing .0 removed when not needed
 - UI refactor for building panels and recipe handling
 - General performance optimizations (including code-splitting)
+- New Prod Line colors and comment field
 
 ## [0.2.1] - 2026-01-31
 

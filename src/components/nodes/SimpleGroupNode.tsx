@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { NodeProps, NodeResizer } from '@xyflow/react';
 import itemsData from '../../data/items.json';
 import { useUiSettings } from '../../contexts/UiSettingsContext';
+import { themeMap } from '../../constants/themeMap';
 
 const itemImageMap = import.meta.glob('../../assets/items/*', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
 const resourceImageMap = import.meta.glob('../../assets/resources/*', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
@@ -38,13 +39,18 @@ const hexToRgba = (hex: string, alpha: number) => {
 function SimpleGroupNode({ id, data, selected }: NodeProps) {
   const ui = useUiSettings();
   const label = (data.label as string) || 'Production line';
-  const color = (data.color as string) || '#1f2937';
+  const themeKey = (data.theme as string | undefined) || '';
+  const legacyColor = data.color as string | undefined;
+  const themeColors = themeMap[themeKey as keyof typeof themeMap];
+  const color = themeColors?.header || legacyColor || themeMap.orange.header;
   const summaryItems = (data.summaryItems as Array<{ id: string; name: string; count: number; rate: number; activeCount: number }> | undefined) || [];
+  const buildingCount = (data.buildingCount as number | undefined) ?? 0;
   const totalPower = (data.totalPower as number | undefined) || 0;
   const targetPower = (data.targetPower as number | undefined) || 0;
   const isOverTarget = targetPower > 0 && totalPower > targetPower;
   const isGhost = (data.isGhost as boolean) || false;
   const lockChildren = (data.lockChildren as boolean) ?? true;
+  const comment = (data.comment as string | undefined) || '';
   const formatNum = (value: number) => (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1));
 
   return (
@@ -90,9 +96,11 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
           <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
             {label}
           </div>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>
-            {summaryItems.length > 0 ? `Power ${formatNum(totalPower)} MW` : ''}
-          </div>
+          {targetPower <= 0 && (
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>
+              {summaryItems.length > 0 ? `Power ${formatNum(totalPower)} MW` : ''}
+            </div>
+          )}
         </div>
         {!isGhost && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -144,9 +152,28 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
           </div>
         )}
       </div>
+      {comment.trim().length > 0 && (
+        <div
+          style={{
+            marginBottom: 8,
+            padding: '6px 8px',
+            borderRadius: 8,
+            background: hexToRgba(color, 0.12),
+            border: `1px solid ${color}55`,
+            color: '#cbd5f5',
+            fontSize: 11,
+            lineHeight: 1.4,
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {comment}
+        </div>
+      )}
       {summaryItems.length === 0 ? (
         <div style={{ fontSize: 11, color: '#94a3b8' }}>
-          No summary yet. Click "Get Summary".
+          {buildingCount > 0
+            ? 'No summary yet. Click "Get Summary".'
+            : 'No production buildings added yet.'}
         </div>
       ) : (
         <>
@@ -188,12 +215,12 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
                   );
             })}
           </div>
-          <div style={{ marginTop: 8, fontSize: 11, color: isOverTarget ? '#f87171' : '#94a3b8' }}>
-            Total power: {formatNum(totalPower)} MW
-            {targetPower > 0 && (
+          {targetPower > 0 && (
+            <div style={{ marginTop: 8, fontSize: 11, color: isOverTarget ? '#f87171' : '#94a3b8' }}>
+              Total power: {formatNum(totalPower)} MW
               <> | Target: {formatNum(targetPower)} MW {isOverTarget ? '(Exceeded)' : '(Within limit)'}</>
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>

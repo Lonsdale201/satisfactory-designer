@@ -1162,6 +1162,7 @@ function AppContent() {
         (n) => (n as Record<string, unknown>).parentId === nodeId,
       );
       let totalPower = 0;
+      let buildingCount = 0;
       const summaryMap = new Map<
         string,
         {
@@ -1178,6 +1179,7 @@ function AppContent() {
         const isStacked = data.isStacked as boolean | undefined;
         if (isStacked) return;
         const stackCount = (data.stackCount as number | undefined) || 1;
+        buildingCount += stackCount;
         const powerUsage = (data.powerUsage as number) || 0;
         totalPower += powerUsage * stackCount;
         const outputItem = data.outputItem as string | undefined;
@@ -1208,6 +1210,7 @@ function AppContent() {
               ...n.data,
               summaryItems: Array.from(summaryMap.values()),
               totalPower,
+              buildingCount,
             },
           };
         }),
