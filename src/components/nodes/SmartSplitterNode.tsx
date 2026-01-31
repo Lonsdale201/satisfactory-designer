@@ -55,6 +55,7 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
   const ui = useUiSettings();
   const isCollapsed = data.collapsed ?? false;
   const isCompact = data.compactMode ?? false;
+  const isGhost = (data as { isGhost?: boolean }).isGhost ?? false;
   const headerLabel = (data.customLabel || 'Smart Splitter').toUpperCase();
   const theme = (data as { theme?: string }).theme || '';
   const themeMap = {
@@ -83,9 +84,9 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
 
   const handleStyle = {
     background: '#d1d5db',
-    width: 14,
-    height: 14,
-    border: '1px solid #6b7280',
+    width: isGhost ? 8 : 14,
+    height: isGhost ? 8 : 14,
+    border: isGhost ? 'none' : '1px solid #6b7280',
     borderRadius: 999,
   } as const;
 
@@ -101,6 +102,8 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
         borderRadius: 8,
         fontFamily: 'Inter, sans-serif',
         position: 'relative',
+        opacity: isGhost ? 0.5 : 1,
+        pointerEvents: isGhost ? 'none' : 'auto',
       }}
     >
       {/* Input Handle - Back (Left) */}
@@ -236,7 +239,7 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
         </div>
 
         {/* Body */}
-        {!isCollapsed && (
+        {!isCollapsed && !isGhost && (
           <div style={{ padding: 12 }}>
             {/* Incoming Items */}
             <div
