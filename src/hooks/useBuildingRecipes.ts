@@ -103,8 +103,12 @@ export function useBuildingRecipes({
       >);
   const alternateProducers = selectedOutputItem?.alternateProducers ?? [];
   const defaultProducer = selectedOutputItem?.defaultProducer;
-  const canUseDefault =
-    !defaultProducer || !buildingId || defaultProducer === buildingId;
+  const producerList = selectedOutputItem?.producers ?? [];
+  const canUseDefault = !buildingId
+    ? true
+    : defaultProducer
+      ? defaultProducer === buildingId
+      : producerList.includes(buildingId);
   const altOptionsWithIndex = alternateOptions.map((requirements, index) => ({
     requirements,
     index,

@@ -18,8 +18,9 @@ import {
   InventoryPanel,
 } from "./BuildingPanels";
 
-const buildings: Building[] = buildingsData.buildings as Building[];
-const items: Item[] = itemsData.items;
+const buildings: Building[] = (buildingsData as { buildings: Building[] })
+  .buildings;
+const items: Item[] = (itemsData as { items: Item[] }).items;
 interface SimpleBuildingNodeProps {
   id: string;
   selected?: boolean;
