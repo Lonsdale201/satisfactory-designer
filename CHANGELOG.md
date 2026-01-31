@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.2.2] - 2026-01-31
+
+### Fixed
+
+- Fluid storage handling adjusted
+- Storage-started production lines now assume 100% full capacity
+- Flow calculations corrected
+- Production efficiency now accounts for mixed input lines (solid + liquid)
+- Cubic meter display issues fixed
+- Water Extractor now defaults to Water output
+- Items with multiple non-alternate recipes now handled correctly
+- Missing Refinery production items restored (recipes still in progress)
+- Missing items added back to their producer building lists
+- Conveyor Lift no longer gets deleted due to stale cross-layer selection
+
+### Added
+
+- New items
+- New recipes
+- Stack sizes added
+
+### Changed
+
+- Production Group upgrades:
+  - Target power value
+  - Total power display
+  - Displays how many item types the group produces
+  - Trailing .0 removed when not needed
+- UI refactor for building panels and recipe handling
+- General performance optimizations (including code-splitting)
+
 ## [0.2.1] - 2026-01-31
 
 ### Added

@@ -58,9 +58,14 @@ export function useCalculation({
               calcStatus: nodeStatuses[node.id]?.status || null,
               calcSupply: nodeStatuses[node.id]?.supply || 0,
               calcDemand: nodeStatuses[node.id]?.demand || 0,
+              calcInputDetails: nodeStatuses[node.id]?.inputDetails,
               storageFlow: nodeStatuses[node.id]?.storageFlow,
               calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
               calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
+              calcMismatchOutgoingCount:
+                nodeStatuses[node.id]?.mismatchOutgoingCount || 0,
+              calcMismatchOutgoingTotal:
+                nodeStatuses[node.id]?.mismatchOutgoingTotal || 0,
               calcDisconnected: nodeStatuses[node.id]?.disconnected || false,
             }
           };
@@ -74,9 +79,14 @@ export function useCalculation({
           calcStatus: nodeStatuses[node.id]?.status || null,
           calcSupply: nodeStatuses[node.id]?.supply || 0,
           calcDemand: nodeStatuses[node.id]?.demand || 0,
+          calcInputDetails: nodeStatuses[node.id]?.inputDetails,
           storageFlow: nodeStatuses[node.id]?.storageFlow,
           calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
           calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
+          calcMismatchOutgoingCount:
+            nodeStatuses[node.id]?.mismatchOutgoingCount || 0,
+          calcMismatchOutgoingTotal:
+            nodeStatuses[node.id]?.mismatchOutgoingTotal || 0,
           calcDisconnected: nodeStatuses[node.id]?.disconnected || false,
         }
       };

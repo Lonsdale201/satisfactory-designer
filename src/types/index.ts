@@ -35,6 +35,9 @@ export interface ItemRecipe {
   name?: string;
   inputs: ItemRequirement[];
   byproducts?: ItemRequirement[];
+  output?: number;
+  producer?: string;
+  producers?: string[];
 }
 
 export interface Item {
@@ -72,6 +75,7 @@ export interface BuildingNodeData {
   conveyorMk?: 1 | 2 | 3;
   pipeMk?: 1 | 2 | 3;
   theme?: string;
+  calcInputDetails?: Array<{ itemId: string; supply: number; demand: number }>;
   // Stack properties
   stackId?: string;
   stackCount?: number;
@@ -88,6 +92,8 @@ export interface GroupNodeData {
   label: string;
   color: string;
   summaryItems?: Array<{ id: string; name: string; count: number; rate: number }>;
+  totalPower?: number;
+  targetPower?: number;
   lockChildren?: boolean;
 }
 

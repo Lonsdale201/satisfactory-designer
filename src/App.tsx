@@ -6,6 +6,8 @@ import {
   memo,
   useRef,
   useDeferredValue,
+  lazy,
+  Suspense,
 } from "react";
 import {
   ReactFlow,
@@ -37,7 +39,9 @@ import ConveyorLiftNode from "./components/nodes/ConveyorLiftNode";
 
 // Sidebar components
 import Sidebar from "./components/sidebar/Sidebar";
-import NodeEditorPanel from "./components/sidebar/NodeEditorPanel";
+const NodeEditorPanel = lazy(
+  () => import("./components/sidebar/NodeEditorPanel"),
+);
 
 // Constants - using extracted modules
 import { CONVEYOR_RATES, PIPE_RATES } from "./constants";
@@ -55,8 +59,9 @@ import {
   createCustomEdge,
   createCustomConnectionLine,
 } from "./components/canvas";
-import { ZoomControls, LayerPanel, Header } from "./components/toolbar";
-import type { UiSettings } from "./components/toolbar";
+import { ZoomControls, LayerPanel } from "./components/toolbar";
+import type { ItemRequirement } from "./types";
+const Header = lazy(() => import("./components/toolbar/Header"));
 
 // Utils
 
@@ -84,6 +89,12 @@ const nodeTypes: NodeTypes = {
   smartSplitter: SmartSplitterNode,
   goal: GoalNode,
   conveyorLift: ConveyorLiftNode,
+};
+
+const getRecipeByproducts = (recipe: unknown): ItemRequirement[] => {
+  if (!recipe || typeof recipe !== "object") return [];
+  const value = (recipe as { byproducts?: unknown }).byproducts;
+  return Array.isArray(value) ? (value as ItemRequirement[]) : [];
 };
 
 interface FlowCanvasProps {
@@ -260,7 +271,6 @@ function AppContent() {
   }, [handleCalculate, calcEnabledRef]);
 
   const {
-    selectedNodesForStack,
     setSelectedNodesForStack,
     canStack,
     canUnstack,
@@ -496,12 +506,17 @@ function AppContent() {
   // Track previous edge count for detecting edge changes
   const prevEdgeCountRef = useRef(edges.length);
 
-  // Auto-recalculate when edges are deleted (edge count decreases)
+  // Auto-recalculate when edges change (debounced, skip during drag)
   useEffect(() => {
     if (calcEnabledRef.current && edges.length !== prevEdgeCountRef.current) {
-      if (edges.length < prevEdgeCountRef.current) {
-        handleCalculate();
+      if (isDraggingRef.current) {
+        prevEdgeCountRef.current = edges.length;
+        return;
       }
+      const timer = setTimeout(() => {
+        handleCalculate();
+      }, 120);
+      return () => clearTimeout(timer);
     }
     prevEdgeCountRef.current = edges.length;
   }, [edges.length, handleCalculate]);
@@ -533,10 +548,6 @@ function AppContent() {
         nodeList.find((n) => n.id === resolvedSourceId),
       );
       if (!sourceNode) return "";
-      const targetNode = targetNodeId
-        ? resolveStackNode(nodeList.find((n) => n.id === targetNodeId))
-        : undefined;
-
       const data = sourceNode.data as Record<string, unknown>;
       const isPipe = sourceHandle?.includes("pipe") || false;
       const conveyorMk = (data.conveyorMk as number) || 1;
@@ -550,7 +561,9 @@ function AppContent() {
         const outputItemId = data.outputItem as string | undefined;
         const itemId = edgeItemId || outputItemId;
         const item = itemsData.items.find((i) => i.id === itemId);
-        let rate = data.production || 0;
+        const rawRate = data.production;
+        let rate =
+          typeof rawRate === "number" ? rawRate : Number(rawRate) || 0;
         if (itemId && outputItemId && itemId !== outputItemId) {
           const outputItem = itemsData.items.find(
             (i) => i.id === outputItemId,
@@ -561,7 +574,7 @@ function AppContent() {
           const recipeIndex =
             selectedRecipeIndex ?? outputItem?.defaultRecipeIndex ?? 0;
           const recipe = outputItem?.recipes?.[recipeIndex];
-          const byproduct = recipe?.byproducts?.find(
+          const byproduct = getRecipeByproducts(recipe).find(
             (byp) => byp.item === itemId,
           );
           if (byproduct && outputItem?.defaultProduction) {
@@ -767,7 +780,7 @@ function AppContent() {
             const recipeIndex =
               selectedRecipeIndex ?? outputItem?.defaultRecipeIndex ?? 0;
             const recipe = outputItem?.recipes?.[recipeIndex];
-            const byproduct = recipe?.byproducts?.find((byp) => {
+            const byproduct = getRecipeByproducts(recipe).find((byp) => {
               const bypItem = itemsData.items.find(
                 (item) => item.id === byp.item,
               );
@@ -800,8 +813,6 @@ function AppContent() {
 
       // Auto-set production building output based on incoming item
       if (resolvedTargetNode?.type === "building") {
-        const sourceData =
-          (sourceNode?.data as Record<string, unknown>) || {};
         const targetData = resolvedTargetNode.data as Record<string, unknown>;
         const targetBuildingId = targetData.buildingId as string;
         const targetBuilding = buildingsData.buildings.find(
@@ -861,8 +872,6 @@ function AppContent() {
         );
         if (targetBuilding?.category === "storage") {
           const storedItem = targetData.storedItem as string | undefined;
-          const sourceData =
-            (sourceNode?.data as Record<string, unknown>) || {};
           const incomingItem = edgeItemId;
           if (incomingItem && !storedItem) {
             setNodes((nds) =>
@@ -886,8 +895,6 @@ function AppContent() {
         const transportingItem = targetData.transportingItem as
           | string
           | undefined;
-        const sourceData =
-          (sourceNode?.data as Record<string, unknown>) || {};
         const incomingItem = edgeItemId;
         if (incomingItem && !transportingItem) {
           setNodes((nds) =>
@@ -1091,6 +1098,15 @@ function AppContent() {
       "nodeDataChange",
       handleNodeDataChange as EventListener,
     );
+    const handleForceRecalculate = () => {
+      if (calcEnabledRef.current) {
+        handleCalculate();
+      }
+    };
+    window.addEventListener(
+      "forceRecalculate",
+      handleForceRecalculate as EventListener,
+    );
     const handleGroupSummary = (event: CustomEvent) => {
       const { nodeId } = event.detail as { nodeId: string };
       const groupNode = nodesRef.current.find((n) => n.id === nodeId);
@@ -1098,6 +1114,7 @@ function AppContent() {
       const childNodes = nodesRef.current.filter(
         (n) => (n as Record<string, unknown>).parentId === nodeId,
       );
+      let totalPower = 0;
       const summaryMap = new Map<
         string,
         {
@@ -1111,6 +1128,11 @@ function AppContent() {
       childNodes.forEach((n) => {
         if (n.type !== "building") return;
         const data = n.data as Record<string, unknown>;
+        const isStacked = data.isStacked as boolean | undefined;
+        if (isStacked) return;
+        const stackCount = (data.stackCount as number | undefined) || 1;
+        const powerUsage = (data.powerUsage as number) || 0;
+        totalPower += powerUsage * stackCount;
         const outputItem = data.outputItem as string | undefined;
         if (!outputItem) return;
         const item = itemsData.items.find((i) => i.id === outputItem);
@@ -1138,6 +1160,7 @@ function AppContent() {
             data: {
               ...n.data,
               summaryItems: Array.from(summaryMap.values()),
+              totalPower,
             },
           };
         }),
@@ -1147,95 +1170,18 @@ function AppContent() {
       "groupSummary",
       handleGroupSummary as EventListener,
     );
-    const handleGroupCollect = (event: CustomEvent) => {
-      const { nodeId } = event.detail as { nodeId: string };
-      const groupNode =
-        reactFlowRef.current.getNode(nodeId) ||
-        nodesRef.current.find((n) => n.id === nodeId);
-      if (!groupNode) return;
-
-      const groupData = groupNode.data as Record<string, unknown>;
-      const groupLayer = (groupData.layer as number) || currentLayer;
-      const groupAbs = getAbsolutePosition(groupNode);
-      const groupWidth = groupNode.width || 0;
-      const groupHeight = groupNode.height || 0;
-
-      if (!groupWidth || !groupHeight) return;
-
-      const groupRect = {
-        x1: groupAbs.x,
-        y1: groupAbs.y,
-        x2: groupAbs.x + groupWidth,
-        y2: groupAbs.y + groupHeight,
-      };
-
-      setNodes((nds) => {
-        const updated = nds.map((node) => {
-          if (node.id === nodeId) return node;
-          if (node.type === "group") return node;
-          const data = node.data as Record<string, unknown>;
-          if (data.isGhost) return node;
-
-          const liveNode = reactFlowRef.current.getNode(node.id) || node;
-          const nodeAbs = getAbsolutePosition(liveNode ?? node);
-          const nodeWidth = liveNode.width || node.width || 0;
-          const nodeHeight = liveNode.height || node.height || 0;
-          if (!nodeWidth || !nodeHeight) return node;
-
-          const nodeRect = {
-            x1: nodeAbs.x,
-            y1: nodeAbs.y,
-            x2: nodeAbs.x + nodeWidth,
-            y2: nodeAbs.y + nodeHeight,
-          };
-          const intersects = !(
-            nodeRect.x2 < groupRect.x1 ||
-            nodeRect.x1 > groupRect.x2 ||
-            nodeRect.y2 < groupRect.y1 ||
-            nodeRect.y1 > groupRect.y2
-          );
-          if (!intersects) return node;
-
-          return {
-            ...node,
-            parentId: nodeId,
-            extent: "parent" as const,
-            position: {
-              x: nodeAbs.x - groupAbs.x,
-              y: nodeAbs.y - groupAbs.y,
-            },
-            data: { ...node.data, layer: groupLayer },
-          };
-        });
-
-        // Ensure parent group is before its children to avoid React Flow warning.
-        return updated.slice().sort((a, b) => {
-          if (a.id === nodeId) return -1;
-          if (b.id === nodeId) return 1;
-          const aChild = (a as Record<string, unknown>).parentId === nodeId;
-          const bChild = (b as Record<string, unknown>).parentId === nodeId;
-          if (aChild && !bChild) return 1;
-          if (!aChild && bChild) return -1;
-          return 0;
-        });
-      });
-    };
-    window.addEventListener(
-      "groupCollect",
-      handleGroupCollect as EventListener,
-    );
     return () => {
       window.removeEventListener(
         "nodeDataChange",
         handleNodeDataChange as EventListener,
       );
       window.removeEventListener(
-        "groupSummary",
-        handleGroupSummary as EventListener,
+        "forceRecalculate",
+        handleForceRecalculate as EventListener,
       );
       window.removeEventListener(
-        "groupCollect",
-        handleGroupCollect as EventListener,
+        "groupSummary",
+        handleGroupSummary as EventListener,
       );
     };
   }, [setNodes, setEdges, getEdgeLabel, currentLayer]);
@@ -1563,6 +1509,21 @@ function AppContent() {
     }
   }, [nodes, selectedNodeId]);
 
+  useEffect(() => {
+    // Clear selections from other layers to avoid deleting hidden nodes.
+    setNodes((nds) =>
+      nds.map((node) => {
+        const layer =
+          ((node.data as Record<string, unknown>).layer as number) || 1;
+        if (layer !== currentLayer && node.selected) {
+          return { ...node, selected: false };
+        }
+        return node;
+      }),
+    );
+    selectedEdgesRef.current = [];
+  }, [currentLayer, setNodes]);
+
   // Sync edge material and handle IDs based on connected nodes
   useEffect(() => {
     setEdges((eds) => {
@@ -1653,7 +1614,13 @@ function AppContent() {
         if (building?.category === "storage") {
           return data.storedItem ? [data.storedItem as string] : [];
         }
-        return data.outputItem ? [data.outputItem as string] : [];
+        const outputItem = data.outputItem as string | undefined;
+        if (outputItem) return [outputItem];
+        if (building?.fixedOutput) return [building.fixedOutput];
+        if (building?.outputs && building.outputs.length > 0) {
+          return [building.outputs[0]];
+        }
+        return [];
       }
       if (node.type === "conveyorLift") {
         return data.transportingItem ? [data.transportingItem as string] : [];
@@ -2057,25 +2024,27 @@ function AppContent() {
       {/* Main Flow Area */}
       <Box sx={{ flexGrow: 1, position: "relative" }}>
         {/* Header */}
-        <Header
-          nodesCount={nodes.length}
-          calcEnabled={calcEnabled}
-          setCalcEnabled={setCalcEnabled}
-          handleCalculate={handleCalculate}
-          clearCalculation={clearCalculation}
-          canStack={canStack}
-          canUnstack={canUnstack}
-          handleStack={handleStack}
-          handleUnstack={handleUnstack}
-          allCollapsed={allCollapsed}
-          handleToggleAllCollapse={handleToggleAllCollapse}
-          handleImport={handleImport}
-          handleExport={handleExport}
-          handleClearAll={handleClearAll}
-          uiSettings={uiSettings}
-          setUiSettings={setUiSettings}
-          repoUrl={repoUrl}
-        />
+        <Suspense fallback={null}>
+          <Header
+            nodesCount={nodes.length}
+            calcEnabled={calcEnabled}
+            setCalcEnabled={setCalcEnabled}
+            handleCalculate={handleCalculate}
+            clearCalculation={clearCalculation}
+            canStack={canStack}
+            canUnstack={canUnstack}
+            handleStack={handleStack}
+            handleUnstack={handleUnstack}
+            allCollapsed={allCollapsed}
+            handleToggleAllCollapse={handleToggleAllCollapse}
+            handleImport={handleImport}
+            handleExport={handleExport}
+            handleClearAll={handleClearAll}
+            uiSettings={uiSettings}
+            setUiSettings={setUiSettings}
+            repoUrl={repoUrl}
+          />
+        </Suspense>
 
         <UiSettingsProvider value={uiSettings}>
           <FlowCanvas
@@ -2110,12 +2079,16 @@ function AppContent() {
             interactionLocked={interactionLocked}
             setInteractionLocked={setInteractionLocked}
           />
-          <NodeEditorPanel
-            node={selectedNodeSnapshot}
-            onClose={handlePaneClick}
-            onDelete={handleDeleteNode}
-            onDuplicate={handleDuplicateNode}
-          />
+          {selectedNodeSnapshot && (
+            <Suspense fallback={null}>
+              <NodeEditorPanel
+                node={selectedNodeSnapshot}
+                onClose={handlePaneClick}
+                onDelete={handleDeleteNode}
+                onDuplicate={handleDuplicateNode}
+              />
+            </Suspense>
+          )}
           <LayerPanel
             currentLayer={currentLayer}
             maxLayer={maxLayer}

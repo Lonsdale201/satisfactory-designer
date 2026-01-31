@@ -134,20 +134,14 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     if (selectedBuilding.fixedOutput) {
       return items.filter((item) => item.id === selectedBuilding.fixedOutput);
     }
-    if (selectedBuilding.outputs?.length) {
-      return items.filter((item) => {
-        if (!selectedBuilding.outputs.includes(item.id)) return false;
-        const hasRouting =
-          Boolean(item.defaultProducer) ||
-          (item.alternateProducers && item.alternateProducers.length > 0);
-        if (!hasRouting) return true;
-        if (item.defaultProducer === selectedBuilding.id) return true;
-        if (item.alternateProducers?.includes(selectedBuilding.id)) return true;
-        return false;
-      });
-    }
-
-    return items.filter((item) => item.producers?.includes(selectedBuilding.id));
+    return items.filter((item) => {
+      const buildingId = selectedBuilding.id;
+      if (item.defaultProducer === buildingId) return true;
+      if (item.alternateProducers?.includes(buildingId)) return true;
+      if (item.producers?.includes(buildingId)) return true;
+      if (selectedBuilding.outputs?.includes(item.id)) return true;
+      return false;
+    });
   }, [selectedBuilding]);
 
   const buildingTypeOptions = useMemo(() => {
@@ -235,13 +229,42 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
 
   const handleOutputChange = useCallback((_: unknown, newValue: Item | null) => {
     dispatchChange('outputItem', newValue?.id || '');
-    if (newValue?.defaultProduction) {
-      dispatchChange('production', newValue.defaultProduction);
-    }
     if (newValue?.recipes && newValue.recipes.length > 0) {
-      dispatchChange('selectedRecipeIndex', newValue.defaultRecipeIndex ?? 0);
+      const buildingId = selectedBuilding?.id;
+      const recipeEntries = newValue.recipes
+        .map((recipe, index) => ({ recipe, index }))
+        .filter(({ recipe }) => {
+          const producer = recipe.producer;
+          const producers = recipe.producers;
+          if (!producer && !producers) return true;
+          if (!buildingId) return true;
+          if (producer && producer === buildingId) return true;
+          if (producers && producers.includes(buildingId)) return true;
+          return false;
+        });
+      const eligibleEntries =
+        recipeEntries.length > 0
+          ? recipeEntries
+          : newValue.recipes.map((recipe, index) => ({ recipe, index }));
+      const desiredIndex = newValue.defaultRecipeIndex ?? 0;
+      const hasDesired = eligibleEntries.some(
+        (entry) => entry.index === desiredIndex,
+      );
+      const nextRecipeIndex = hasDesired
+        ? desiredIndex
+        : eligibleEntries[0]?.index ?? 0;
+      const recipeOutput = newValue.recipes[nextRecipeIndex]?.output;
+      dispatchChange('selectedRecipeIndex', nextRecipeIndex);
+      if (recipeOutput) {
+        dispatchChange('production', recipeOutput);
+      } else if (newValue?.defaultProduction) {
+        dispatchChange('production', newValue.defaultProduction);
+      }
     } else {
       dispatchChange('selectedRecipeIndex', 0);
+      if (newValue?.defaultProduction) {
+        dispatchChange('production', newValue.defaultProduction);
+      }
     }
     dispatchChange('selectedAltIndex', null);
   }, [dispatchChange]);
@@ -335,6 +358,22 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                 label="Group Name"
                 value={(nodeData?.label as string) || ''}
                 onChange={(e) => dispatchChange('label', e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#0f172a',
+                    color: '#fff',
+                  },
+                  '& .MuiInputLabel-root': { color: '#9ca3af' },
+                }}
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Target Power (MW)"
+                value={Number(nodeData?.targetPower || 0)}
+                onChange={(e) =>
+                  dispatchChange('targetPower', parseFloat(e.target.value) || 0)
+                }
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#0f172a',

@@ -40,9 +40,12 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
   const label = (data.label as string) || 'Production line';
   const color = (data.color as string) || '#1f2937';
   const summaryItems = (data.summaryItems as Array<{ id: string; name: string; count: number; rate: number; activeCount: number }> | undefined) || [];
-  const totalRate = summaryItems.reduce((sum, item) => sum + (item.rate || 0), 0);
+  const totalPower = (data.totalPower as number | undefined) || 0;
+  const targetPower = (data.targetPower as number | undefined) || 0;
+  const isOverTarget = targetPower > 0 && totalPower > targetPower;
   const isGhost = (data.isGhost as boolean) || false;
   const lockChildren = (data.lockChildren as boolean) ?? true;
+  const formatNum = (value: number) => (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1));
 
   return (
     <div
@@ -88,32 +91,11 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
             {label}
           </div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>
-            {summaryItems.length > 0 ? `Total ${totalRate.toFixed(1)}/min` : ''}
+            {summaryItems.length > 0 ? `Power ${formatNum(totalPower)} MW` : ''}
           </div>
         </div>
         {!isGhost && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
-              type="button"
-              data-no-panel="true"
-              onClick={(event) => {
-                event.stopPropagation();
-                const custom = new CustomEvent('groupCollect', { detail: { nodeId: id } });
-                window.dispatchEvent(custom);
-              }}
-              style={{
-                border: `1px solid ${color}`,
-                color,
-                background: 'transparent',
-                borderRadius: 999,
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '2px 8px',
-                cursor: 'pointer',
-              }}
-            >
-              Collect
-            </button>
             <button
               type="button"
               data-no-panel="true"
@@ -168,6 +150,9 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
         </div>
       ) : (
         <>
+          <div style={{ fontSize: 11, color: '#cbd5f5', marginBottom: 6 }}>
+            This production line produces total ({summaryItems.length} types):
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {summaryItems.map((item) => {
               const iconUrl = findIconUrl(item.id, item.name);
@@ -197,11 +182,17 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
                         )
                       )}
                   <div style={{ fontSize: 11, color: isInactive ? '#fecaca' : '#e2e8f0' }}>
-                    {item.name} x{item.count} ({item.rate.toFixed(1)}/min)
+                    {item.name} x{item.count} ({formatNum(item.rate)}/min)
                   </div>
                     </div>
                   );
             })}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 11, color: isOverTarget ? '#f87171' : '#94a3b8' }}>
+            Total power: {formatNum(totalPower)} MW
+            {targetPower > 0 && (
+              <> | Target: {formatNum(targetPower)} MW {isOverTarget ? '(Exceeded)' : '(Within limit)'}</>
+            )}
           </div>
         </>
       )}

@@ -30,6 +30,8 @@ function createGroupNodeData(currentLayer: number) {
     label: 'Production line',
     color: '#0ea5e9',
     summaryItems: [],
+    totalPower: 0,
+    targetPower: 0,
     lockChildren: true,
     layer: currentLayer,
   };
@@ -180,11 +182,20 @@ export function useNodeOperations({
       ...edge,
       id: `edge-${newId}-${index}-${Date.now()}`,
       target: newId,
+      data: {
+        ...(edge.data || {}),
+        virtualTargetId:
+          (edge.data as Record<string, unknown> | undefined)?.virtualTargetId ===
+          nodeId
+            ? newId
+            : (edge.data as Record<string, unknown> | undefined)?.virtualTargetId,
+      },
     }));
 
     setNodes((nds) => [...nds, newNode]);
     setEdges((eds) => [...eds, ...newEdges]);
     setNodeIdCounter((c) => c + 1);
+    window.dispatchEvent(new CustomEvent("forceRecalculate"));
   }, [nodeIdCounter, edges, setNodes, setEdges, nodesRef, setNodeIdCounter]);
 
   const handleDuplicateNodes = useCallback((nodeIds: string[]) => {
@@ -218,6 +229,14 @@ export function useNodeOperations({
           ...edge,
           id: `edge-${newId}-${idx}-${Date.now()}-${counter}`,
           target: newId,
+          data: {
+            ...(edge.data || {}),
+            virtualTargetId:
+              (edge.data as Record<string, unknown> | undefined)?.virtualTargetId ===
+              nodeId
+                ? newId
+                : (edge.data as Record<string, unknown> | undefined)?.virtualTargetId,
+          },
         });
       });
     });
@@ -226,6 +245,7 @@ export function useNodeOperations({
       setNodes((nds) => [...nds, ...createdNodes]);
       setEdges((eds) => [...eds, ...createdEdges]);
       setNodeIdCounter(counter);
+      window.dispatchEvent(new CustomEvent("forceRecalculate"));
     }
   }, [nodeIdCounter, edges, setNodes, setEdges, nodesRef, setNodeIdCounter]);
 

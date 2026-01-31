@@ -10,6 +10,31 @@ interface CalculationContext {
   buildings: Building[];
 }
 
+function resolveRecipeForData(
+  item: Item | undefined,
+  data: Record<string, unknown>,
+): { recipe: Item["recipes"][number]; recipeIndex: number } | null {
+  if (!item?.recipes || item.recipes.length === 0) return null;
+  const buildingId = (data.buildingId as string | undefined) || "";
+  const entries = item.recipes.map((recipe, index) => ({ recipe, index }));
+  const filtered = entries.filter(({ recipe }) => {
+    const producer = recipe.producer;
+    const producers = recipe.producers;
+    if (!producer && !producers) return true;
+    if (!buildingId) return true;
+    if (producer && producer === buildingId) return true;
+    if (producers && producers.includes(buildingId)) return true;
+    return false;
+  });
+  const eligible = filtered.length > 0 ? filtered : entries;
+  const selectedRecipeIndex = data.selectedRecipeIndex as number | undefined;
+  const desiredIndex = selectedRecipeIndex ?? item.defaultRecipeIndex ?? 0;
+  const match =
+    eligible.find((entry) => entry.index === desiredIndex) || eligible[0];
+  if (!match) return null;
+  return { recipe: match.recipe, recipeIndex: match.index };
+}
+
 // Build adjacency lists for graph traversal
 export function buildAdjacencyLists(edges: Edge[]) {
   const outgoingEdges: Record<string, Edge[]> = {};
@@ -65,23 +90,19 @@ export function getDemandRate(
     const outputItem = (data.outputItem as string) || "";
     const item = outputItem ? itemById.get(outputItem) : undefined;
 
-    if (item?.recipes && item.recipes.length > 0 && item.defaultProduction) {
-      const selectedRecipeIndex = data.selectedRecipeIndex as
-        | number
-        | undefined;
-      const recipeIndex =
-        selectedRecipeIndex ?? item.defaultRecipeIndex ?? 0;
-      const recipe = item.recipes[recipeIndex];
-      if (recipe?.inputs && recipe.inputs.length > 0) {
-        const scale = production / item.defaultProduction;
-        return (
-          sum +
-          recipe.inputs.reduce(
-            (reqSum, req) => reqSum + req.amount * scale,
-            0,
-          )
-        );
-      }
+    const resolvedRecipe = resolveRecipeForData(item, data);
+    if (resolvedRecipe?.recipe?.inputs && resolvedRecipe.recipe.inputs.length > 0) {
+      const baseOutput =
+        resolvedRecipe.recipe.output ?? item?.defaultProduction ?? 0;
+      if (baseOutput <= 0) return sum;
+      const scale = production / baseOutput;
+      return (
+        sum +
+        resolvedRecipe.recipe.inputs.reduce(
+          (reqSum, req) => reqSum + req.amount * scale,
+          0,
+        )
+      );
     }
 
     if (
@@ -131,19 +152,16 @@ function getDemandRateForItem(
     const outputItem = (data.outputItem as string) || "";
     const item = outputItem ? itemById.get(outputItem) : undefined;
 
-    if (item?.recipes && item.recipes.length > 0 && item.defaultProduction) {
-      const selectedRecipeIndex = data.selectedRecipeIndex as
-        | number
-        | undefined;
-      const recipeIndex =
-        selectedRecipeIndex ?? item.defaultRecipeIndex ?? 0;
-      const recipe = item.recipes[recipeIndex];
-      const req = recipe?.inputs?.find((input) => input.item === itemId);
-      if (req) {
-        const scale = production / item.defaultProduction;
-        return sum + req.amount * scale;
-      }
-      return sum;
+    const resolvedRecipe = resolveRecipeForData(item, data);
+    const req = resolvedRecipe?.recipe?.inputs?.find(
+      (input) => input.item === itemId,
+    );
+    if (req) {
+      const baseOutput =
+        resolvedRecipe?.recipe?.output ?? item?.defaultProduction ?? 0;
+      if (baseOutput <= 0) return sum;
+      const scale = production / baseOutput;
+      return sum + req.amount * scale;
     }
 
     if (
@@ -190,14 +208,9 @@ function getRequiredItemIdsForData(
   const item = outputItem ? itemById.get(outputItem) : undefined;
   if (!item) return [];
 
-  if (item.recipes && item.recipes.length > 0 && item.defaultProduction) {
-    const selectedRecipeIndex = data.selectedRecipeIndex as
-      | number
-      | undefined;
-    const recipeIndex =
-      selectedRecipeIndex ?? item.defaultRecipeIndex ?? 0;
-    const recipe = item.recipes[recipeIndex];
-    return recipe?.inputs?.map((req) => req.item) ?? [];
+  const resolvedRecipe = resolveRecipeForData(item, data);
+  if (resolvedRecipe) {
+    return resolvedRecipe.recipe.inputs?.map((req) => req.item) ?? [];
   }
 
   if (
@@ -281,19 +294,24 @@ function getEdgeItemId(
     if (isPipe) {
       const outputItem = itemById.get(outputItemId);
       if (outputItem?.category === "fluid") return outputItemId;
-      const selectedRecipeIndex = data.selectedRecipeIndex as
-        | number
-        | undefined;
-      const recipeIndex =
-        selectedRecipeIndex ?? outputItem?.defaultRecipeIndex ?? 0;
-      const recipe = outputItem?.recipes?.[recipeIndex];
-      const byproduct = recipe?.byproducts?.find((byp) => {
+      const resolvedRecipe = resolveRecipeForData(outputItem, data);
+      const byproduct = resolvedRecipe?.recipe?.byproducts?.find((byp) => {
         const bypItem = itemById.get(byp.item);
         return bypItem?.category === "fluid";
       });
       if (byproduct) return byproduct.item;
     }
     return outputItemId;
+  }
+  if (sourceNode.type === "smartSplitter") {
+    const outputs = data.splitOutputs as
+      | Array<{ item: string | null }>
+      | undefined;
+    if (!outputs) return undefined;
+    const handle = edge.sourceHandle || "";
+    if (handle === "out-top-0") return outputs[0]?.item ?? undefined;
+    if (handle === "out-right-0") return outputs[1]?.item ?? undefined;
+    if (handle === "out-bottom-0") return outputs[2]?.item ?? undefined;
   }
   if (sourceNode.type === "conveyorLift") {
     return data.transportingItem as string | undefined;
@@ -325,7 +343,13 @@ function getOutgoingSplitRatio(
   const relevant = outgoing.filter((outEdge) => {
     if (getEdgeMaterial(outEdge) !== targetMaterial) return false;
     const outItemId = getEdgeItemId(outEdge, sourceNode, itemById);
-    if (itemId) return outItemId === itemId;
+    if (itemId) {
+      if (outItemId === itemId) return true;
+      if (sourceNode.type === "smartSplitter" && outItemId === undefined) {
+        return true;
+      }
+      return false;
+    }
     return true;
   });
   const count = relevant.length || 1;
@@ -338,7 +362,12 @@ function getMismatchFlags(
   outgoingEdges: Record<string, Edge[]>,
   incomingEdges: Record<string, Edge[]>,
   itemById: Map<string, Item>,
-): { mismatchIncoming: boolean; mismatchOutgoing: boolean } {
+): {
+  mismatchIncoming: boolean;
+  mismatchOutgoing: boolean;
+  mismatchOutgoingCount: number;
+  mismatchOutgoingTotal: number;
+} {
   const requiredItems = getRequiredItemIdsForNode(node, nodes, itemById);
   const mismatchIncoming = (incomingEdges[node.id] || []).some((edge) => {
     const sourceNode = nodes.find((n) => n.id === getEdgeSourceId(edge));
@@ -349,21 +378,33 @@ function getMismatchFlags(
     return !requiredItems.has(incomingItem);
   });
 
-  const mismatchOutgoing = (outgoingEdges[node.id] || []).some((edge) => {
+  let mismatchOutgoingCount = 0;
+  let mismatchOutgoingTotal = 0;
+  let mismatchOutgoing = false;
+  (outgoingEdges[node.id] || []).forEach((edge) => {
     const targetNode = nodes.find((n) => n.id === getEdgeTargetId(edge));
-    if (!targetNode) return false;
+    if (!targetNode) return;
     const outputItemId = getEdgeItemId(edge, node, itemById);
-    if (!outputItemId) return false;
+    if (!outputItemId) return;
+    mismatchOutgoingTotal += 1;
     const targetRequired = getRequiredItemIdsForNode(
       targetNode,
       nodes,
       itemById,
     );
-    if (targetRequired.size === 0) return false;
-    return !targetRequired.has(outputItemId);
+    if (targetRequired.size === 0) return;
+    if (!targetRequired.has(outputItemId)) {
+      mismatchOutgoingCount += 1;
+      mismatchOutgoing = true;
+    }
   });
 
-  return { mismatchIncoming, mismatchOutgoing };
+  return {
+    mismatchIncoming,
+    mismatchOutgoing,
+    mismatchOutgoingCount,
+    mismatchOutgoingTotal,
+  };
 }
 
 // Determine status based on supply and demand
@@ -655,7 +696,8 @@ function calculateStorageFlow(
   incoming.forEach((edge) => {
     const sourceNode = nodes.find((n) => n.id === getEdgeSourceId(edge));
     if (!sourceNode) return;
-    const incomingItemId = getEdgeItemId(edge, sourceNode, itemById);
+    const incomingItemId =
+      getEdgeItemId(edge, sourceNode, itemById) || storedItemId;
     const splitRatio = getOutgoingSplitRatio(
       sourceNode,
       edge,
@@ -703,7 +745,12 @@ function calculateStorageFlow(
     }
   });
 
-  const outRate = Math.min(outDemand, outputCapacity, incomingRate);
+  const hasIncoming = incoming.length > 0;
+  const availableRate =
+    !hasIncoming && storedItemId && outgoing.length > 0
+      ? outputCapacity
+      : incomingRate;
+  const outRate = Math.min(outDemand, outputCapacity, availableRate);
   const netRate = incomingRate - outRate;
   const canFill = netRate > 0 && capacityUnits > 0;
   const fillMinutes = canFill ? capacityUnits / netRate : null;
@@ -803,6 +850,8 @@ function getNodeOutputRateForItem(
   visited: Set<string>,
 ): number {
   if (!itemId) return 0;
+  if (visited.has(node.id)) return 0;
+  visited.add(node.id);
   if (node.type === "conveyorLift") {
     const data = node.data as Record<string, unknown>;
     const transportingItem = data.transportingItem as string | undefined;
@@ -848,24 +897,47 @@ function getNodeOutputRateForItem(
     }
 
     const item = itemById.get(outputItemId);
-    if (item?.recipes && item.defaultProduction) {
-      const selectedRecipeIndex = data.selectedRecipeIndex as
-        | number
-        | undefined;
-      const recipeIndex =
-        selectedRecipeIndex ?? item.defaultRecipeIndex ?? 0;
-      const recipe = item.recipes[recipeIndex];
-      const byproduct = recipe?.byproducts?.find(
-        (byp) => byp.item === itemId,
-      );
-      if (byproduct) {
-        const scale = production / item.defaultProduction;
-        const byRate = byproduct.amount * scale;
-        return Math.min(byRate, beltCapacity);
-      }
+    const resolvedRecipe = resolveRecipeForData(item, data);
+    const byproduct = resolvedRecipe?.recipe?.byproducts?.find(
+      (byp) => byp.item === itemId,
+    );
+    if (byproduct) {
+      const baseOutput =
+        resolvedRecipe?.recipe?.output ?? item?.defaultProduction ?? 0;
+      if (baseOutput <= 0) return 0;
+      const scale = production / baseOutput;
+      const byRate = byproduct.amount * scale;
+      return Math.min(byRate, beltCapacity);
     }
     return 0;
   }
+
+  const producers = traceBackToProducers(
+    node,
+    nodes,
+    edges,
+    incomingEdges,
+    outgoingEdges,
+    itemById,
+    new Set(visited),
+  );
+  let total = 0;
+  producers.forEach(({ node: producerNode, splitRatio }) => {
+    if (producerNode.type !== "building") return;
+    total += getNodeOutputRateForItem(
+      producerNode,
+      itemId,
+      edge,
+      nodes,
+      edges,
+      buildings,
+      itemById,
+      outgoingEdges,
+      incomingEdges,
+      new Set(visited),
+    ) * splitRatio;
+  });
+  return total;
 
   return 0;
 }
@@ -898,15 +970,21 @@ function calculateStorageStatus(
   );
 
   let status: CalcStatus = null;
+  let supply = flow.inRate;
   if (outgoing.length > 0 && flow.outDemand > 0) {
-    status = determineStatus(flow.inRate, flow.outDemand);
+    if (incoming.length === 0 && flow.outRate > 0) {
+      status = determineStatus(flow.outRate, flow.outDemand);
+      supply = flow.outRate;
+    } else {
+      status = determineStatus(flow.inRate, flow.outDemand);
+    }
   } else if (incoming.length > 0) {
     status = "over";
   }
 
   nodeStatuses[node.id] = {
     status,
-    supply: flow.inRate,
+    supply,
     demand: flow.outDemand,
     storageFlow: flow,
   };
@@ -1010,17 +1088,22 @@ function calculateProductionBuildingStatus(
   outgoingEdges: Record<string, Edge[]>,
   incomingEdges: Record<string, Edge[]>,
 ) {
-  let inputSupply = 0;
+  const inputSupplyByItem = new Map<string, number>();
   const data = node.data as Record<string, unknown>;
   const buildingId = (data.buildingId as string) || "";
   const building = buildings.find((b) => b.id === buildingId);
   const conveyorMk = (data.conveyorMk as number) || 1;
   const pipeMk = (data.pipeMk as number) || 1;
+  const requiredItemIds = Array.from(
+    getRequiredItemIdsForNode(node, nodes, itemById),
+  );
 
     incoming.forEach((edge) => {
       const sourceNode = nodes.find((n) => n.id === getEdgeSourceId(edge));
       if (!sourceNode) return;
-      const incomingItemId = getEdgeItemId(edge, sourceNode, itemById);
+      const resolvedIncomingItemId =
+        getEdgeItemId(edge, sourceNode, itemById) ||
+        (requiredItemIds.length === 1 ? requiredItemIds[0] : undefined);
 
       const sourceData = sourceNode.data as Record<string, unknown>;
       const sourceType = sourceNode.type;
@@ -1048,11 +1131,17 @@ function calculateProductionBuildingStatus(
         const splitRatio = getOutgoingSplitRatio(
           sourceNode,
           edge,
-          incomingItemId,
+          resolvedIncomingItemId,
           outgoingEdges,
           itemById,
         );
-        inputSupply += flow.outRate * splitRatio;
+        if (resolvedIncomingItemId) {
+          const current = inputSupplyByItem.get(resolvedIncomingItemId) || 0;
+          inputSupplyByItem.set(
+            resolvedIncomingItemId,
+            current + flow.outRate * splitRatio,
+          );
+        }
       } else {
         // Normal production building
         const stackNodes = getStackNodes(sourceNode, nodes);
@@ -1071,13 +1160,13 @@ function calculateProductionBuildingStatus(
         const splitRatio = getOutgoingSplitRatio(
           sourceNode,
           edge,
-          incomingItemId,
+          resolvedIncomingItemId,
           outgoingEdges,
           itemById,
         );
         const rate = getNodeOutputRateForItem(
           sourceNode,
-          incomingItemId,
+          resolvedIncomingItemId,
           edge,
           nodes,
           edges,
@@ -1087,7 +1176,13 @@ function calculateProductionBuildingStatus(
           incomingEdges,
           new Set(),
         );
-        inputSupply += rate * splitRatio;
+        if (resolvedIncomingItemId) {
+          const current = inputSupplyByItem.get(resolvedIncomingItemId) || 0;
+          inputSupplyByItem.set(
+            resolvedIncomingItemId,
+            current + rate * splitRatio,
+          );
+        }
       }
     } else {
       // For other node types (storage, conveyorLift, splitter, etc.)
@@ -1111,19 +1206,71 @@ function calculateProductionBuildingStatus(
             const stackData = stackNode.data as Record<string, unknown>;
             return sum + ((stackData.production as number) || 0);
           }, 0);
-          inputSupply += producerProduction * splitRatio;
+          if (resolvedIncomingItemId) {
+            const current =
+              inputSupplyByItem.get(resolvedIncomingItemId) || 0;
+            inputSupplyByItem.set(
+              resolvedIncomingItemId,
+              current + producerProduction * splitRatio,
+            );
+          }
         }
       });
     }
   });
 
-  const inputDemand = getDemandRate(node, nodes, itemById);
+  const inputDemandByItem = new Map<string, number>();
+  requiredItemIds.forEach((itemId) => {
+    inputDemandByItem.set(
+      itemId,
+      getDemandRateForItem(node, itemId, nodes, itemById),
+    );
+  });
+  const inputDemandTotal = Array.from(inputDemandByItem.values()).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+  let worstItemId: string | undefined;
+  let worstRatio = Number.POSITIVE_INFINITY;
+  requiredItemIds.forEach((itemId) => {
+    const demand = inputDemandByItem.get(itemId) || 0;
+    if (demand <= 0) return;
+    const supply = inputSupplyByItem.get(itemId) || 0;
+    const ratio = supply / demand;
+    if (ratio < worstRatio) {
+      worstRatio = ratio;
+      worstItemId = itemId;
+    }
+  });
+  const worstDemand = worstItemId
+    ? inputDemandByItem.get(worstItemId) || 0
+    : inputDemandTotal;
+  const worstSupply = worstItemId
+    ? inputSupplyByItem.get(worstItemId) || 0
+    : Array.from(inputSupplyByItem.values()).reduce(
+        (sum, value) => sum + value,
+        0,
+      );
 
-  if (incoming.length > 0 && inputDemand > 0 && inputSupply < inputDemand) {
+  const inputDetails =
+    requiredItemIds.length > 0
+      ? requiredItemIds.map((itemId) => ({
+          itemId,
+          supply: inputSupplyByItem.get(itemId) || 0,
+          demand: inputDemandByItem.get(itemId) || 0,
+        }))
+      : undefined;
+
+  if (
+    incoming.length > 0 &&
+    worstDemand > 0 &&
+    worstSupply < worstDemand
+  ) {
     nodeStatuses[node.id] = {
       status: "under",
-      supply: inputSupply,
-      demand: inputDemand,
+      supply: worstSupply,
+      demand: worstDemand,
+      inputDetails,
     };
     return;
   }
@@ -1175,5 +1322,6 @@ function calculateProductionBuildingStatus(
     status,
     supply: outputSupply,
     demand: outputDemand,
+    inputDetails,
   };
 }
