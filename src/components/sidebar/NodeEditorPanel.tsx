@@ -441,6 +441,9 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
             <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
               Goals
             </Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontSize: 10 }}>
+              Drag nodes into the group to include them in calculations.
+            </Typography>
             <TextField
               size="small"
               type="number"

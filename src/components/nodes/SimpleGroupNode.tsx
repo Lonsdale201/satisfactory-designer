@@ -59,7 +59,7 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
         width: '100%',
         height: '100%',
         borderRadius: 12,
-        background: hexToRgba(color, isGhost ? 0.08 : 0.12),
+        background: hexToRgba(color, isGhost ? 0.03 : 0.12),
         border: selected ? `3px solid ${color}` : `2px dashed ${color}`,
         boxShadow: 'none',
         padding: 10,

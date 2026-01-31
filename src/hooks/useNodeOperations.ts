@@ -25,13 +25,18 @@ interface UseNodeOperationsReturn {
 }
 
 // Default node data factories
-function createGroupNodeData(currentLayer: number) {
+function createGroupNodeData(
+  currentLayer: number,
+  data?: Partial<Record<string, unknown>>,
+) {
   return {
-    label: 'Production line',
-    color: '#0ea5e9',
+    label: (data?.label as string) || 'Production line',
+    theme: (data?.theme as string) || 'orange',
+    color: (data?.color as string) || '#0ea5e9',
     summaryItems: [],
     totalPower: 0,
     targetPower: 0,
+    comment: (data?.comment as string) || '',
     lockChildren: true,
     layer: currentLayer,
   };
@@ -123,7 +128,7 @@ export function useNodeOperations({
       let nodeData: Record<string, unknown>;
       switch (type) {
         case 'group':
-          nodeData = createGroupNodeData(currentLayer);
+          nodeData = createGroupNodeData(currentLayer, data);
           break;
         case 'smartSplitter':
           nodeData = createSmartSplitterNodeData(currentLayer);

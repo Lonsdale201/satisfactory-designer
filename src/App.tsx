@@ -28,7 +28,15 @@ import {
   ConnectionLineComponentProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Box } from "@mui/material";
+import {
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+} from "@mui/material";
 
 // Node components
 import SimpleBuildingNode from "./components/nodes/SimpleBuildingNode";
@@ -60,6 +68,7 @@ import {
   createCustomConnectionLine,
 } from "./components/canvas";
 import { ZoomControls, LayerPanel } from "./components/toolbar";
+import { FloorManagerPanel, FloorSummary } from "./components/toolbar/FloorManagerPanel";
 import type { ItemRequirement } from "./types";
 const Header = lazy(() => import("./components/toolbar/Header"));
 
@@ -230,6 +239,16 @@ function AppContent() {
   const [isDragging, setIsDragging] = useState(false);
   const [uiSettings, setUiSettings] = useState(defaultUiSettings);
   const [currentLayer, setCurrentLayer] = useState(1);
+  const [floorNames, setFloorNames] = useState<Record<string, string>>({});
+  const [floorManagerOpen, setFloorManagerOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingImport, setPendingImport] = useState<{
+    nodes: Node[];
+    edges: Edge[];
+    nodeIdCounter: number;
+    floorNames?: Record<string, string>;
+    floorLayers: number[];
+  } | null>(null);
   const [interactionLocked, setInteractionLocked] = useState(false);
   const repoUrl = "https://github.com/Lonsdale201/satisfactory-designer";
   const allowPanelRef = useRef(false);
@@ -424,6 +443,7 @@ function AppContent() {
       setNodes(filteredNodes);
       setEdges(filteredEdges);
       setNodeIdCounter(saved.nodeIdCounter);
+      setFloorNames(saved.floorNames || {});
     }
     setIsInitialized(true);
   }, [setNodes, setEdges]);
@@ -433,11 +453,11 @@ function AppContent() {
     if (!isInitialized) return;
 
     const timer = setTimeout(() => {
-      saveToLocalStorage(nodes, edges, nodeIdCounter);
+      saveToLocalStorage(nodes, edges, nodeIdCounter, floorNames);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [nodes, edges, nodeIdCounter, isInitialized]);
+  }, [nodes, edges, nodeIdCounter, isInitialized, floorNames]);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -471,15 +491,65 @@ function AppContent() {
   }, [isInitialized, setNodes]);
 
 
-  // Export handler
-  const handleExport = useCallback(() => {
-    exportToFile(nodes, edges, nodeIdCounter);
-  }, [nodes, edges, nodeIdCounter]);
+  const getFloorName = useCallback(
+    (layer: number) => floorNames[String(layer)] || `Floor ${layer}`,
+    [floorNames],
+  );
+
+  const getEdgeSourceId = (edge: Edge): string => {
+    return (
+      ((edge.data as Record<string, unknown> | undefined)?.virtualSourceId as
+        | string
+        | undefined) ?? edge.source
+    );
+  };
+
+  const getEdgeTargetId = (edge: Edge): string => {
+    return (
+      ((edge.data as Record<string, unknown> | undefined)?.virtualTargetId as
+        | string
+        | undefined) ?? edge.target
+    );
+  };
+
+  const handleExportAll = useCallback(() => {
+    exportToFile(nodes, edges, nodeIdCounter, floorNames);
+    setExportDialogOpen(false);
+  }, [nodes, edges, nodeIdCounter, floorNames]);
+
+  const handleExportCurrent = useCallback(() => {
+    const filteredNodes = nodes.filter((node) => {
+      const layer = (node.data as Record<string, unknown>).layer as
+        | number
+        | undefined;
+      return (layer || 1) === currentLayer;
+    });
+    const nodeIds = new Set(filteredNodes.map((node) => node.id));
+    const filteredEdges = edges.filter((edge) => {
+      const sourceId = getEdgeSourceId(edge);
+      const targetId = getEdgeTargetId(edge);
+      return nodeIds.has(sourceId) && nodeIds.has(targetId);
+    });
+    const floorName = getFloorName(currentLayer);
+    exportToFile(
+      filteredNodes,
+      filteredEdges,
+      nodeIdCounter,
+      { [String(currentLayer)]: floorName },
+      `satisplanner_${floorName.replace(/\s+/g, "_").toLowerCase()}.json`,
+    );
+    setExportDialogOpen(false);
+  }, [
+    nodes,
+    edges,
+    nodeIdCounter,
+    currentLayer,
+    getFloorName,
+  ]);
 
   // Import handler
-  const handleImport = useCallback(async () => {
-    try {
-      const state = await importFromFile();
+  const applyImportAll = useCallback(
+    (state: { nodes: Node[]; edges: Edge[]; nodeIdCounter: number; floorNames?: Record<string, string> }) => {
       const filteredNodes = state.nodes.filter((node) => node.type !== "resource");
       const removedIds = new Set(
         state.nodes.filter((node) => node.type === "resource").map((n) => n.id),
@@ -490,10 +560,87 @@ function AppContent() {
       setNodes(filteredNodes);
       setEdges(filteredEdges);
       setNodeIdCounter(state.nodeIdCounter);
+      setFloorNames(state.floorNames || {});
+      setPendingImport(null);
+    },
+    [setNodes, setEdges],
+  );
+
+  const applyImportCurrent = useCallback(() => {
+    if (!pendingImport) return;
+    const { nodes: importNodes, edges: importEdges, nodeIdCounter: importCounter, floorNames: importFloorNames } = pendingImport;
+    const remappedNodes = importNodes.map((node) => {
+      const data = node.data as Record<string, unknown>;
+      const updated = { ...node };
+      const nextData = { ...data, layer: currentLayer };
+      if (node.type === "conveyorLift") {
+        const direction = (data.direction as "up" | "down") || "up";
+        const targetLayer = direction === "up" ? currentLayer + 1 : currentLayer - 1;
+        nextData.layer = currentLayer;
+        nextData.targetLayer = Math.max(1, targetLayer);
+      }
+      updated.data = nextData;
+      return updated;
+    });
+    const currentLayerNodeIds = new Set(
+      nodes.filter((node) => ((node.data as Record<string, unknown>).layer as number | undefined || 1) === currentLayer)
+        .map((node) => node.id),
+    );
+    const retainedNodes = nodes.filter((node) => !currentLayerNodeIds.has(node.id));
+    const retainedEdges = edges.filter((edge) => {
+      const sourceId = getEdgeSourceId(edge);
+      const targetId = getEdgeTargetId(edge);
+      return !currentLayerNodeIds.has(sourceId) && !currentLayerNodeIds.has(targetId);
+    });
+    const newNodeIds = new Set(remappedNodes.map((node) => node.id));
+    const remappedEdges = importEdges.filter((edge) => {
+      const sourceId = getEdgeSourceId(edge);
+      const targetId = getEdgeTargetId(edge);
+      return newNodeIds.has(sourceId) && newNodeIds.has(targetId);
+    });
+    setNodes([...retainedNodes, ...remappedNodes]);
+    setEdges([...retainedEdges, ...remappedEdges]);
+    setNodeIdCounter(Math.max(nodeIdCounter, importCounter));
+    if (importFloorNames) {
+      const importName =
+        importFloorNames[Object.keys(importFloorNames)[0]] ||
+        importFloorNames[String(currentLayer)];
+      if (importName) {
+        setFloorNames((prev) => ({ ...prev, [String(currentLayer)]: importName }));
+      }
+    }
+    setPendingImport(null);
+  }, [pendingImport, nodes, edges, currentLayer, nodeIdCounter]);
+
+  const handleImport = useCallback(async () => {
+    try {
+      const state = await importFromFile();
+      const filteredNodes = state.nodes.filter((node) => node.type !== "resource");
+      const layers = Array.from(
+        new Set(
+          filteredNodes.map(
+            (node) => ((node.data as Record<string, unknown>).layer as number | undefined) || 1,
+          ),
+        ),
+      );
+      const cleanedState = {
+        nodes: filteredNodes,
+        edges: state.edges,
+        nodeIdCounter: state.nodeIdCounter,
+        floorNames: state.floorNames,
+      };
+      if (layers.length <= 1) {
+        setPendingImport({
+          ...cleanedState,
+          floorLayers: layers.length === 0 ? [1] : layers,
+        });
+      } else {
+        applyImportAll(cleanedState);
+      }
     } catch (error) {
       console.error("Import failed:", error);
     }
-  }, [setNodes, setEdges]);
+  }, [applyImportAll]);
 
   // Clear all handler - removes all nodes, edges, and localStorage
   const handleClearAll = useCallback(() => {
@@ -507,9 +654,37 @@ function AppContent() {
       setNodeIdCounter(1);
       setSelectedNodeId(null);
       setSelectedNodeSnapshot(null);
+      setFloorNames({});
       clearLocalStorage();
     }
   }, [setNodes, setEdges]);
+
+  const handleClearCurrent = useCallback(() => {
+    if (
+      window.confirm(
+        "Delete nodes on the current floor? This cannot be undone.",
+      )
+    ) {
+      const layerIds = new Set(
+        nodes.filter((node) => {
+          const layer = (node.data as Record<string, unknown>).layer as
+            | number
+            | undefined;
+          return (layer || 1) === currentLayer;
+        }).map((node) => node.id),
+      );
+      setNodes((nds) => nds.filter((node) => !layerIds.has(node.id)));
+      setEdges((eds) =>
+        eds.filter((edge) => {
+          const sourceId = getEdgeSourceId(edge);
+          const targetId = getEdgeTargetId(edge);
+          return !layerIds.has(sourceId) && !layerIds.has(targetId);
+        }),
+      );
+      setSelectedNodeId(null);
+      setSelectedNodeSnapshot(null);
+    }
+  }, [nodes, currentLayer, setNodes, setEdges]);
 
   // NOTE: handleCalculate and clearCalculation are now provided by useCalculation hook
 
@@ -1012,9 +1187,9 @@ function AppContent() {
       const { nodeId, field, value } = event.detail;
 
       // Update node data
-      setNodes((nds) => {
-        const updatedNodes = nds.map((node) => {
-          if (node.id === nodeId) {
+        setNodes((nds) => {
+          const updatedNodes = nds.map((node) => {
+            if (node.id === nodeId) {
             if (field === "stackActiveIndex") {
               const stackedNodeIds = (node.data as Record<string, unknown>)
                 .stackedNodeIds as string[] | undefined;
@@ -1137,9 +1312,15 @@ function AppContent() {
           }
         }
 
-        return updatedNodes;
-      });
-    };
+          nodesRef.current = updatedNodes;
+          return updatedNodes;
+        });
+        if (calcEnabledRef.current) {
+          queueMicrotask(() => {
+            handleCalculate();
+          });
+        }
+      };
 
     window.addEventListener(
       "nodeDataChange",
@@ -2051,6 +2232,106 @@ function AppContent() {
     }, 1);
   }, [nodes]);
 
+  const floorSummaries: FloorSummary[] = useMemo(() => {
+    const itemById = new Map(itemsData.items.map((item) => [item.id, item]));
+    const buildingById = new Map(
+      buildingsData.buildings.map((b) => [b.id, b]),
+    );
+    const map = new Map<number, FloorSummary>();
+
+    nodes.forEach((node) => {
+      const rawLayer = (node.data as Record<string, unknown>).layer;
+      const layer =
+        typeof rawLayer === "number" ? rawLayer : Number(rawLayer) || 1;
+      const entry =
+        map.get(layer) ||
+        ({
+          layer,
+          name: floorNames[String(layer)] || `Floor ${layer}`,
+          totalNodes: 0,
+          buildingCount: 0,
+          totalPower: 0,
+          outputs: [],
+          buildings: [],
+        } as FloorSummary);
+
+      entry.totalNodes += 1;
+      if (node.type === "building") {
+        const data = node.data as Record<string, unknown>;
+        const isStacked = data.isStacked as boolean | undefined;
+        if (!isStacked) {
+          const stackCount = (data.stackCount as number | undefined) || 1;
+          entry.buildingCount += stackCount;
+          const buildingId = data.buildingId as string | undefined;
+          const building = buildingId ? buildingById.get(buildingId) : undefined;
+          const powerUsage =
+            ((data.powerUsage as number) || building?.defaultPower || 0) *
+            stackCount;
+          if (building?.category !== "storage") {
+            entry.totalPower += powerUsage;
+          }
+
+          if (building) {
+            const current = entry.buildings.find((b) => b.id === building.id);
+            if (current) {
+              current.count += stackCount;
+            } else {
+              entry.buildings.push({
+                id: building.id,
+                name: building.name,
+                count: stackCount,
+              });
+            }
+          }
+
+          const outputItemId = data.outputItem as string | undefined;
+          const production = (data.production as number) || 0;
+          if (outputItemId && production > 0) {
+            const outputItem = itemById.get(outputItemId);
+            const existing = entry.outputs.find((o) => o.id === outputItemId);
+            const rate = production * stackCount;
+            if (existing) {
+              existing.rate += rate;
+            } else {
+              entry.outputs.push({
+                id: outputItemId,
+                name: outputItem?.name || outputItemId,
+                rate,
+              });
+            }
+          }
+        }
+      }
+
+      map.set(layer, entry);
+    });
+
+    if (!map.has(currentLayer)) {
+      map.set(currentLayer, {
+        layer: currentLayer,
+        name: floorNames[String(currentLayer)] || `Floor ${currentLayer}`,
+        totalNodes: 0,
+        buildingCount: 0,
+        totalPower: 0,
+        outputs: [],
+        buildings: [],
+      });
+    }
+
+    return Array.from(map.values())
+      .filter(
+        (floor) => floor.totalNodes > 0 || floor.layer === currentLayer,
+      )
+      .sort((a, b) => a.layer - b.layer)
+      .map((floor) => ({
+        ...floor,
+        outputs: floor.outputs
+          .sort((a, b) => b.rate - a.rate)
+          .slice(0, 5),
+        buildings: floor.buildings.sort((a, b) => b.count - a.count).slice(0, 6),
+      }));
+  }, [nodes, floorNames, currentLayer]);
+
   // Memoize default edge options
   const defaultEdgeOptions = useMemo(
     () => ({
@@ -2100,8 +2381,9 @@ function AppContent() {
             allCollapsed={allCollapsed}
             handleToggleAllCollapse={handleToggleAllCollapse}
             handleImport={handleImport}
-            handleExport={handleExport}
+            handleExport={() => setExportDialogOpen(true)}
             handleClearAll={handleClearAll}
+            handleClearCurrent={handleClearCurrent}
             uiSettings={uiSettings}
             setUiSettings={setUiSettings}
             repoUrl={repoUrl}
@@ -2154,8 +2436,80 @@ function AppContent() {
           <LayerPanel
             currentLayer={currentLayer}
             maxLayer={maxLayer}
+            floorName={getFloorName(currentLayer)}
+            onOpenManager={() => setFloorManagerOpen(true)}
             onLayerChange={setCurrentLayer}
           />
+          <FloorManagerPanel
+            open={floorManagerOpen}
+            floors={floorSummaries}
+            currentLayer={currentLayer}
+            onClose={() => setFloorManagerOpen(false)}
+            onRename={(layer, name) =>
+              setFloorNames((prev) => ({ ...prev, [String(layer)]: name }))
+            }
+            onSelectLayer={(layer) => {
+              setCurrentLayer(layer);
+              setFloorManagerOpen(false);
+            }}
+          />
+          <Dialog
+            open={exportDialogOpen}
+            onClose={() => setExportDialogOpen(false)}
+            PaperProps={{ sx: { bgcolor: "#111827", color: "#e5e7eb" } }}
+          >
+            <DialogTitle>Export</DialogTitle>
+            <DialogContent sx={{ color: "#cbd5f5" }}>
+              Export all floors or just the current floor?
+            </DialogContent>
+            <DialogActions sx={{ px: 2, pb: 2 }}>
+              <Button onClick={() => setExportDialogOpen(false)} sx={{ color: "#e2e8f0" }}>
+                Cancel
+              </Button>
+              <Button onClick={handleExportCurrent} sx={{ color: "#60a5fa" }}>
+                Current Floor
+              </Button>
+              <Button onClick={handleExportAll} variant="contained" sx={{ bgcolor: "#2563eb" }}>
+                All Floors
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={Boolean(pendingImport)}
+            onClose={() => setPendingImport(null)}
+            PaperProps={{ sx: { bgcolor: "#111827", color: "#e5e7eb" } }}
+          >
+            <DialogTitle>Import</DialogTitle>
+            <DialogContent sx={{ color: "#cbd5f5" }}>
+              {pendingImport?.floorLayers.length === 1
+                ? "This file contains a single floor. Import into current floor or replace all floors?"
+                : "This file contains multiple floors and will replace the current project."}
+            </DialogContent>
+            <DialogActions sx={{ px: 2, pb: 2 }}>
+              <Button onClick={() => setPendingImport(null)} sx={{ color: "#e2e8f0" }}>
+                Cancel
+              </Button>
+              {pendingImport?.floorLayers.length === 1 && (
+                <Button onClick={applyImportCurrent} sx={{ color: "#60a5fa" }}>
+                  Current Floor
+                </Button>
+              )}
+              <Button
+                onClick={() =>
+                  pendingImport && applyImportAll({
+                    nodes: pendingImport.nodes,
+                    edges: pendingImport.edges,
+                    nodeIdCounter: pendingImport.nodeIdCounter,
+                    floorNames: pendingImport.floorNames,
+                  })
+                }
+                variant="contained"
+                sx={{ bgcolor: "#2563eb" }}
+              >
+                Replace All
+              </Button>
+            </DialogActions>
+          </Dialog>
         </UiSettingsProvider>
       </Box>
     </Box>

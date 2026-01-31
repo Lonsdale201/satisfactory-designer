@@ -46,6 +46,7 @@ interface SimpleBuildingNodeProps {
     calcMismatchOutgoingCount?: number;
     calcMismatchOutgoingTotal?: number;
     calcDisconnected?: boolean;
+    calcTerminalInputOnly?: boolean;
     calcInputDetails?: Array<{
       itemId: string;
       supply: number;
@@ -271,6 +272,40 @@ const SimpleBuildingNode = memo(
         }),
       );
     }, [displayData.outputItem, id, isGhost, selectedBuilding?.fixedOutput]);
+
+    useEffect(() => {
+      if (isGhost) return;
+      if (displayData.outputItem) return;
+      if (!selectedBuilding) return;
+      if (!incomingItems || incomingItems.length === 0) return;
+      const uniqueIncoming = Array.from(new Set(incomingItems));
+      if (uniqueIncoming.length !== 1) return;
+      const incomingId = uniqueIncoming[0];
+      const matching = items.filter((item) => {
+        if (!item.producers || !item.producers.includes(selectedBuilding.id)) {
+          return false;
+        }
+        if (!item.requires || item.requires.length === 0) return false;
+        return item.requires.some((req) => req.item === incomingId);
+      });
+      if (matching.length !== 1) return;
+      const matchedItem = matching[0];
+      window.dispatchEvent(
+        new CustomEvent("nodeDataChange", {
+          detail: { nodeId: id, field: "outputItem", value: matchedItem.id },
+        }),
+      );
+      const defaultProduction = matchedItem.defaultProduction;
+      if (defaultProduction) {
+        updateProductionForRate(defaultProduction);
+      }
+    }, [
+      displayData.outputItem,
+      id,
+      incomingItems,
+      isGhost,
+      selectedBuilding,
+    ]);
 
     const getHandleStyle = (type: "conveyor" | "pipe") => {
       if (isGhost) {
@@ -746,6 +781,14 @@ const SimpleBuildingNode = memo(
                       calcInputDetails={displayData.calcInputDetails}
                       items={items}
                       title={calcStatusTitle}
+                      showDemandLine={!displayData.calcTerminalInputOnly}
+                      surplusItemName={
+                        displayData.calcStatus === "over"
+                          ? selectedOutputItem?.name ??
+                            selectedStoredItem?.name ??
+                            undefined
+                          : undefined
+                      }
                     />
                   )}
 

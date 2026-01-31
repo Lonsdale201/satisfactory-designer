@@ -31,6 +31,7 @@ interface HeaderProps {
   handleImport: () => void;
   handleExport: () => void;
   handleClearAll: () => void;
+  handleClearCurrent: () => void;
   uiSettings: UiSettings;
   setUiSettings: React.Dispatch<React.SetStateAction<UiSettings>>;
   repoUrl: string;
@@ -52,6 +53,7 @@ const Header = memo(
     handleImport,
     handleExport,
     handleClearAll,
+    handleClearCurrent,
     uiSettings,
     setUiSettings,
     repoUrl,
@@ -320,12 +322,12 @@ const Header = memo(
         />
       </Box>
 
-      {/* Top-right Info/Changelog bar */}
+      {/* Top-left Info/Changelog bar */}
       <Box
         sx={{
           position: "absolute",
           top: 16,
-          right: 16,
+          left: 16,
           zIndex: 10,
           display: "flex",
           alignItems: "center",
@@ -396,12 +398,21 @@ const Header = memo(
           <Button
             onClick={() => {
               setConfirmOpen(false);
+              handleClearCurrent();
+            }}
+            sx={{ color: "#fbbf24" }}
+          >
+            Current Floor
+          </Button>
+          <Button
+            onClick={() => {
+              setConfirmOpen(false);
               handleClearAll();
             }}
             variant="contained"
             sx={{ bgcolor: "#b91c1c", "&:hover": { bgcolor: "#dc2626" } }}
           >
-            Delete
+            All Floors
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3] - 2026-01-31
+
+### Added
+
+- New floor level management
+
+### Fixed
+
+- Calculation system improvements
+
+### Changed
+
+- Clearer overproduction messaging
+
 ## [0.2.2] - 2026-01-31
 
 ### Fixed

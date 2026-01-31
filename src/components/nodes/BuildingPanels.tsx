@@ -290,7 +290,7 @@ export const ProducesPanel = memo(
               border: `1px solid ${requirementsMet ? "#2ecc71" : "#ef4444"}`,
             }}
           >
-            {requirementsMet ? "OK" : "X"}
+            {requirementsMet ? "✓" : "X"}
           </span>
         )}
       </div>
@@ -906,6 +906,8 @@ export const CalcStatusPanel = memo(
     calcInputDetails,
     items,
     title,
+    showDemandLine = true,
+    surplusItemName,
   }: {
     calcStatus: "optimal" | "under" | "over" | null;
     calcSupply: number | undefined;
@@ -913,6 +915,8 @@ export const CalcStatusPanel = memo(
     calcInputDetails?: Array<{ itemId: string; supply: number; demand: number }>;
     items: Item[];
     title?: string;
+    showDemandLine?: boolean;
+    surplusItemName?: string;
   }) => (
     <div
       title={title}
@@ -968,17 +972,38 @@ export const CalcStatusPanel = memo(
           <>^ Overproduction</>
         )}
       </div>
-      <div
-        style={{
-          fontSize: 9,
-          color: "#b0b0b0",
-          marginTop: 2,
-        }}
-      >
-        Supply: {formatNum(calcSupply)}/min {" -> "} Demand:{" "}
-        {formatNum(calcDemand)}/min
-      </div>
-      {Array.isArray(calcInputDetails) && calcInputDetails.length > 1 && (
+      {showDemandLine && (
+        <div
+          style={{
+            fontSize: 9,
+            color: "#b0b0b0",
+            marginTop: 2,
+          }}
+        >
+          Supply: {formatNum(calcSupply)}/min {" -> "} Demand:{" "}
+          {formatNum(calcDemand)}/min
+        </div>
+      )}
+      {calcStatus === "over" && surplusItemName && (
+        <div
+          style={{
+            fontSize: 9,
+            color: "#d4b06b",
+            marginTop: 4,
+          }}
+        >
+          More items arrive than it can process /min:{" "}
+          <span style={{ fontWeight: 700, color: "#fbbf24" }}>
+            {formatNum(Math.max(0, (calcSupply || 0) - (calcDemand || 0)))}
+          </span>{" "}
+          <span style={{ fontWeight: 700, color: "#fde68a" }}>
+            {surplusItemName}
+          </span>
+        </div>
+      )}
+      {showDemandLine &&
+        Array.isArray(calcInputDetails) &&
+        calcInputDetails.length > 1 && (
         <div
           style={{
             marginTop: 4,

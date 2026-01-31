@@ -90,11 +90,14 @@ export interface BuildingNodeData {
 export interface GroupNodeData {
   [key: string]: unknown;
   label: string;
-  color: string;
+  color?: string;
+  theme?: string;
   summaryItems?: Array<{ id: string; name: string; count: number; rate: number }>;
   totalPower?: number;
   targetPower?: number;
   lockChildren?: boolean;
+  comment?: string;
+  buildingCount?: number;
 }
 
 

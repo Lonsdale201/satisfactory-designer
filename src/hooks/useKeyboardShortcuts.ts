@@ -59,12 +59,10 @@ export function useKeyboardShortcuts({
       const isModifier = event.ctrlKey || event.metaKey;
       if (!isModifier) return;
 
-      const target = event.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+      const target = event.target as HTMLElement | null;
+      const isEditing =
+        !!target?.closest("input, textarea, [contenteditable='true'], [role='textbox']");
+      if (isEditing) {
         return;
       }
 
@@ -91,12 +89,10 @@ export function useKeyboardShortcuts({
     const handleDelete = (event: KeyboardEvent) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
 
-      const target = event.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+      const target = event.target as HTMLElement | null;
+      const isEditing =
+        !!target?.closest("input, textarea, [contenteditable='true'], [role='textbox']");
+      if (isEditing) {
         return;
       }
 
@@ -166,12 +162,10 @@ export function useKeyboardShortcuts({
       if (!isModifier || event.key.toLowerCase() !== "z") return;
 
       // Don't trigger in input fields
-      const target = event.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+      const target = event.target as HTMLElement | null;
+      const isEditing =
+        !!target?.closest("input, textarea, [contenteditable='true'], [role='textbox']");
+      if (isEditing) {
         return;
       }
 

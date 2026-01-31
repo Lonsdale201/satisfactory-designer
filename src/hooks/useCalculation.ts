@@ -60,6 +60,8 @@ export function useCalculation({
               calcDemand: nodeStatuses[node.id]?.demand || 0,
               calcInputDetails: nodeStatuses[node.id]?.inputDetails,
               storageFlow: nodeStatuses[node.id]?.storageFlow,
+              calcTerminalInputOnly:
+                nodeStatuses[node.id]?.terminalInputOnly || false,
               calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
               calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
               calcMismatchOutgoingCount:
@@ -81,6 +83,8 @@ export function useCalculation({
           calcDemand: nodeStatuses[node.id]?.demand || 0,
           calcInputDetails: nodeStatuses[node.id]?.inputDetails,
           storageFlow: nodeStatuses[node.id]?.storageFlow,
+          calcTerminalInputOnly:
+            nodeStatuses[node.id]?.terminalInputOnly || false,
           calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
           calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
           calcMismatchOutgoingCount:
@@ -102,6 +106,7 @@ export function useCalculation({
         calcSupply: 0,
         calcDemand: 0,
         storageFlow: undefined,
+        calcTerminalInputOnly: false,
       },
     })));
   }, [setNodes]);

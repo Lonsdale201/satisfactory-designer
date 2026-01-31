@@ -8,6 +8,7 @@ export interface SavedState {
   nodes: Node[];
   edges: Edge[];
   nodeIdCounter: number;
+  floorNames?: Record<string, string>;
   savedAt: string;
 }
 
@@ -17,7 +18,8 @@ export interface SavedState {
 export function saveToLocalStorage(
   nodes: Node[],
   edges: Edge[],
-  nodeIdCounter: number
+  nodeIdCounter: number,
+  floorNames?: Record<string, string>
 ): void {
   try {
     const state: SavedState = {
@@ -25,6 +27,7 @@ export function saveToLocalStorage(
       nodes,
       edges,
       nodeIdCounter,
+      floorNames,
       savedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -73,6 +76,7 @@ export function exportToFile(
   nodes: Node[],
   edges: Edge[],
   nodeIdCounter: number,
+  floorNames?: Record<string, string>,
   filename?: string
 ): void {
   const state: SavedState = {
@@ -80,6 +84,7 @@ export function exportToFile(
     nodes,
     edges,
     nodeIdCounter,
+    floorNames,
     savedAt: new Date().toISOString(),
   };
 

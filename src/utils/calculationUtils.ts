@@ -1186,6 +1186,7 @@ function calculateProductionBuildingStatus(
   const requiredItemIds = Array.from(
     getRequiredItemIdsForNode(node, nodes, itemById),
   );
+  const outgoing = outgoingEdges[node.id] || [];
 
     incoming.forEach((edge) => {
       const sourceNode = nodes.find((n) => n.id === getEdgeSourceId(edge));
@@ -1350,6 +1351,19 @@ function calculateProductionBuildingStatus(
         }))
       : undefined;
 
+  if (incoming.length === 0 && requiredItemIds.length > 0) {
+    if (inputDemandTotal > 0) {
+      nodeStatuses[node.id] = {
+        status: "under",
+        supply: 0,
+        demand: inputDemandTotal,
+        inputDetails,
+        terminalInputOnly: true,
+      };
+      return;
+    }
+  }
+
   if (
     incoming.length > 0 &&
     worstDemand > 0 &&
@@ -1360,6 +1374,17 @@ function calculateProductionBuildingStatus(
       supply: worstSupply,
       demand: worstDemand,
       inputDetails,
+    };
+    return;
+  }
+
+  if (outgoing.length === 0 && inputDemandTotal > 0) {
+    nodeStatuses[node.id] = {
+      status: determineStatus(worstSupply, worstDemand),
+      supply: worstSupply,
+      demand: worstDemand,
+      inputDetails,
+      terminalInputOnly: true,
     };
     return;
   }
@@ -1375,7 +1400,6 @@ function calculateProductionBuildingStatus(
     : CONVEYOR_RATES[conveyorMk as ConveyorMk];
   const outputSupply = Math.min(production, beltCapacity);
 
-  const outgoing = outgoingEdges[node.id] || [];
   let outputDemand = 0;
   outgoing.forEach((edge) => {
     const targetNode = nodes.find((n) => n.id === getEdgeTargetId(edge));

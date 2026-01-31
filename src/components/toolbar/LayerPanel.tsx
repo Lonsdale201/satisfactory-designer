@@ -1,32 +1,35 @@
 import { memo } from 'react';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography, Button } from '@mui/material';
 import * as Icons from '@mui/icons-material';
 
 interface LayerPanelProps {
   currentLayer: number;
   maxLayer: number;
+  floorName?: string;
+  onOpenManager?: () => void;
   onLayerChange: (layer: number) => void;
 }
 
 export const LayerPanel = memo(function LayerPanel({
   currentLayer,
   maxLayer,
+  floorName,
+  onOpenManager,
   onLayerChange,
 }: LayerPanelProps) {
   return (
     <Box
       sx={{
         position: 'absolute',
-        bottom: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        top: 16,
+        right: 16,
         display: 'flex',
         alignItems: 'center',
-        gap: 1,
+        gap: 0.4,
         bgcolor: 'rgba(26, 26, 46, 0.95)',
         borderRadius: 2,
-        px: 2,
-        py: 1,
+        px: 1.2,
+        py: 0.6,
         border: '1px solid rgba(250, 149, 73, 0.3)',
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
       }}
@@ -42,16 +45,42 @@ export const LayerPanel = memo(function LayerPanel({
             '&.Mui-disabled': { color: '#374151' },
           }}
         >
-          <Icons.KeyboardArrowDown sx={{ fontSize: 20 }} />
+          <Icons.KeyboardArrowLeft sx={{ fontSize: 22 }} />
         </IconButton>
       </Tooltip>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80, justifyContent: 'center' }}>
-        <Icons.Layers sx={{ fontSize: 16, color: '#fa9549' }} />
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
-          Floor {currentLayer}
+      <Tooltip title={floorName || `Floor ${currentLayer}`}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.4,
+            minWidth: 96,
+            justifyContent: 'center',
+          }}
+        >
+          <Icons.Layers sx={{ fontSize: 18, color: '#fa9549' }} />
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#e5e7eb',
+              maxWidth: 120,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {(floorName || `Floor ${currentLayer}`).slice(0, 18)}
+          </Typography>
+        </Box>
+      </Tooltip>
+
+      {maxLayer > 1 && (
+        <Typography sx={{ fontSize: 10, color: '#6b7280' }}>
+          (1-{maxLayer})
         </Typography>
-      </Box>
+      )}
 
       <Tooltip title="Next Floor">
         <IconButton
@@ -62,14 +91,29 @@ export const LayerPanel = memo(function LayerPanel({
             '&:hover': { color: '#fff', bgcolor: 'rgba(250,149,73,0.2)' },
           }}
         >
-          <Icons.KeyboardArrowUp sx={{ fontSize: 20 }} />
+          <Icons.KeyboardArrowRight sx={{ fontSize: 22 }} />
         </IconButton>
       </Tooltip>
 
-      {maxLayer > 1 && (
-        <Typography sx={{ fontSize: 10, color: '#6b7280', ml: 1 }}>
-          (1-{maxLayer})
-        </Typography>
+      {onOpenManager && (
+        <Button
+          size="small"
+          onClick={onOpenManager}
+          startIcon={<Icons.ViewList sx={{ fontSize: 18 }} />}
+          sx={{
+            color: '#fa9549',
+            textTransform: 'none',
+            fontSize: 12,
+            fontWeight: 700,
+            px: 1,
+            minWidth: 0,
+            borderRadius: 6,
+            border: '1px solid rgba(250,149,73,0.4)',
+            '&:hover': { bgcolor: 'rgba(250,149,73,0.12)', color: '#fff' },
+          }}
+        >
+          Floor Manager
+        </Button>
       )}
     </Box>
   );
