@@ -304,9 +304,9 @@ function getEdgeItemId(
     return outputItemId;
   }
   if (sourceNode.type === "smartSplitter") {
-    const outputs = data.splitOutputs as
-      | Array<{ item: string | null }>
-      | undefined;
+    const outputs =
+      (data.splitOutputs as Array<{ item: string | null }> | undefined) ??
+      (data.autoAssignedOutputs as Array<{ item: string | null }> | undefined);
     if (!outputs) return undefined;
     const handle = edge.sourceHandle || "";
     if (handle === "out-top-0") return outputs[0]?.item ?? undefined;
@@ -669,6 +669,18 @@ function calculateStorageFlow(
   const inputCapacity = inputRatePer * inputCount;
   const outputCapacity = outputRatePer * outputCount;
 
+  const resolveSplitterIncomingItemId = (splitterNode: Node): string | undefined => {
+    const splitterIncoming = incomingEdges[splitterNode.id] || [];
+    for (const splitterEdge of splitterIncoming) {
+      const splitterSource = nodes.find(
+        (n) => n.id === getEdgeSourceId(splitterEdge),
+      );
+      const incomingId = getEdgeItemId(splitterEdge, splitterSource, itemById);
+      if (incomingId) return incomingId;
+    }
+    return undefined;
+  };
+
   const getIncomingItemId = (): string | undefined => {
     const incoming = incomingEdges[node.id] || [];
     for (const edge of incoming) {
@@ -676,6 +688,10 @@ function calculateStorageFlow(
       if (!sourceNode) continue;
       const edgeItemId = getEdgeItemId(edge, sourceNode, itemById);
       if (edgeItemId) return edgeItemId;
+      if (sourceNode.type === "smartSplitter") {
+        const incomingId = resolveSplitterIncomingItemId(sourceNode);
+        if (incomingId) return incomingId;
+      }
     }
     return undefined;
   };
@@ -693,11 +709,15 @@ function calculateStorageFlow(
 
   const incoming = incomingEdges[node.id] || [];
   let incomingRate = 0;
+
   incoming.forEach((edge) => {
     const sourceNode = nodes.find((n) => n.id === getEdgeSourceId(edge));
     if (!sourceNode) return;
-    const incomingItemId =
+    let incomingItemId =
       getEdgeItemId(edge, sourceNode, itemById) || storedItemId;
+    if (!incomingItemId && sourceNode.type === "smartSplitter") {
+      incomingItemId = resolveSplitterIncomingItemId(sourceNode) || storedItemId;
+    }
     const splitRatio = getOutgoingSplitRatio(
       sourceNode,
       edge,
@@ -858,6 +878,75 @@ function getNodeOutputRateForItem(
     if (transportingItem && transportingItem !== itemId) return 0;
     const beltCapacity = CONVEYOR_RATES[1];
     return beltCapacity;
+  }
+
+  if (node.type === "smartSplitter") {
+    const outgoing = outgoingEdges[node.id] || [];
+    if (outgoing.length === 0) return 0;
+    const targetMaterial = getEdgeMaterial(edge);
+    let totalRatio = 0;
+    outgoing.forEach((outEdge) => {
+      if (getEdgeMaterial(outEdge) !== targetMaterial) return;
+      const outItemId = getEdgeItemId(outEdge, node, itemById);
+      if (itemId) {
+        if (outItemId === itemId) {
+          totalRatio += getOutgoingSplitRatio(
+            node,
+            outEdge,
+            itemId,
+            outgoingEdges,
+            itemById,
+          );
+        } else if (!outItemId) {
+          totalRatio += getOutgoingSplitRatio(
+            node,
+            outEdge,
+            itemId,
+            outgoingEdges,
+            itemById,
+          );
+        }
+        return;
+      }
+      totalRatio += getOutgoingSplitRatio(
+        node,
+        outEdge,
+        itemId,
+        outgoingEdges,
+        itemById,
+      );
+    });
+    const producers = traceBackToProducers(
+      node,
+      nodes,
+      edges,
+      incomingEdges,
+      outgoingEdges,
+      itemById,
+      (() => {
+        const nextVisited = new Set(visited);
+        nextVisited.delete(node.id);
+        return nextVisited;
+      })(),
+    );
+    let total = 0;
+    producers.forEach(({ node: producerNode, splitRatio }) => {
+      if (producerNode.type !== "building") return;
+      const rate = getNodeOutputRateForItem(
+        producerNode,
+        itemId,
+        edge,
+        nodes,
+        edges,
+        buildings,
+        itemById,
+        outgoingEdges,
+        incomingEdges,
+        new Set(visited),
+      );
+      total += rate * splitRatio;
+    });
+    return total * totalRatio;
   }
 
   if (node.type === "building") {

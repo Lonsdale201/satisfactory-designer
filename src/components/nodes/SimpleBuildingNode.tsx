@@ -5,10 +5,7 @@ import buildingsData from "../../data/buildings.json";
 import itemsData from "../../data/items.json";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
 import { formatNum } from "../../utils/nodeUi";
-import {
-  findBuildingIconUrl,
-  findItemIconUrl,
-} from "../../utils/iconLookup";
+import { findBuildingIconUrl, findItemIconUrl } from "../../utils/iconLookup";
 import { getThemeColors } from "../../constants/themeMap";
 import { useBuildingRecipes } from "../../hooks/useBuildingRecipes";
 import {
@@ -48,7 +45,11 @@ interface SimpleBuildingNodeProps {
     calcMismatchOutgoingCount?: number;
     calcMismatchOutgoingTotal?: number;
     calcDisconnected?: boolean;
-    calcInputDetails?: Array<{ itemId: string; supply: number; demand: number }>;
+    calcInputDetails?: Array<{
+      itemId: string;
+      supply: number;
+      demand: number;
+    }>;
     storageFlow?: {
       inRate: number;
       outRate: number;
@@ -270,7 +271,6 @@ const SimpleBuildingNode = memo(
       );
     }, [displayData.outputItem, id, isGhost, selectedBuilding?.fixedOutput]);
 
-
     const getHandleStyle = (type: "conveyor" | "pipe") => {
       if (isGhost) {
         return {
@@ -321,7 +321,6 @@ const SimpleBuildingNode = memo(
           : displayData.calcStatus === "over"
             ? `Supply exceeds demand. Supply: ${formatNum(displayData.calcSupply as number | undefined)}/min, Demand: ${formatNum(displayData.calcDemand as number | undefined)}/min`
             : undefined;
-
 
     return (
       <>
@@ -580,7 +579,9 @@ const SimpleBuildingNode = memo(
             {!isCollapsed && !isGhost && (
               <div
                 key={
-                  isStackParent ? `stack-body-${stackActiveIndex}` : "stack-body"
+                  isStackParent
+                    ? `stack-body-${stackActiveIndex}`
+                    : "stack-body"
                 }
                 style={{
                   padding: 12,
@@ -615,21 +616,25 @@ const SimpleBuildingNode = memo(
                       items={items}
                     />
                     {activeRequirements.length > 0 && selectedOutputItem && (
-                      <InputsPanel
-                        themeColors={themeColors}
-                        requiredInputs={requiredInputs}
-                        inputsExpanded={inputsExpanded}
-                        setInputsExpanded={setInputsExpanded}
-                        hideAllImages={ui.hideAllImages}
-                      />
+                      <div style={{ marginBottom: 8 }}>
+                        <InputsPanel
+                          themeColors={themeColors}
+                          requiredInputs={requiredInputs}
+                          inputsExpanded={inputsExpanded}
+                          setInputsExpanded={setInputsExpanded}
+                          hideAllImages={ui.hideAllImages}
+                        />
+                      </div>
                     )}
-                    {showIoBlock && selectedOutputItem && outputRows.length > 0 && (
-                      <OutputsPanel
-                        themeColors={themeColors}
-                        outputs={outputRowsWithIcons}
-                        hideAllImages={ui.hideAllImages}
-                      />
-                    )}
+                    {showIoBlock &&
+                      selectedOutputItem &&
+                      outputRows.length > 0 && (
+                        <OutputsPanel
+                          themeColors={themeColors}
+                          outputs={outputRowsWithIcons}
+                          hideAllImages={ui.hideAllImages}
+                        />
+                      )}
                     {!ui.hideIoStats && (
                       <label
                         style={{
@@ -687,7 +692,9 @@ const SimpleBuildingNode = memo(
                     selectedStoredItem={selectedStoredItem}
                     hideAllImages={ui.hideAllImages}
                     themeColors={themeColors}
-                    storageFlow={ui.showProductionEfficiency ? storageFlow : undefined}
+                    storageFlow={
+                      ui.showProductionEfficiency ? storageFlow : undefined
+                    }
                   />
                 )}
 

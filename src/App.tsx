@@ -238,6 +238,7 @@ function AppContent() {
   const isDraggingRef = useRef(false);
   const reactFlowRef = useRef(reactFlowInstance);
   const logicNodesRef = useRef(nodes);
+  const incomingItemsByNodeRef = useRef<Map<string, string[]>>(new Map());
 
   // Refs to access current nodes/edges without triggering re-renders
   const nodesRef = useRef(nodes);
@@ -387,6 +388,15 @@ function AppContent() {
     );
   }, [interactionLocked, setNodes]);
 
+  const buildNodeSnapshot = useCallback((node: Node) => {
+    const incomingItems = incomingItemsByNodeRef.current.get(node.id);
+    return {
+      id: node.id,
+      type: node.type,
+      data: incomingItems ? { ...node.data, incomingItems } : node.data,
+    };
+  }, []);
+
   const captureNodeSnapshot = useCallback((nodeId: string | null) => {
     if (!nodeId) {
       setSelectedNodeSnapshot(null);
@@ -397,8 +407,8 @@ function AppContent() {
       setSelectedNodeSnapshot(null);
       return;
     }
-    setSelectedNodeSnapshot({ id: node.id, type: node.type, data: node.data });
-  }, []);
+    setSelectedNodeSnapshot(buildNodeSnapshot(node));
+  }, [buildNodeSnapshot]);
 
   // Auto-load from localStorage on startup
   useEffect(() => {
@@ -754,7 +764,7 @@ function AppContent() {
       )
         return;
 
-      const getEdgeItemId = (
+      const getDirectItemId = (
         node: Node | undefined,
         sourceHandle?: string | null,
         targetHandle?: string | null,
@@ -802,6 +812,47 @@ function AppContent() {
           if (sourceHandle === "out-right-0") return outputs[1]?.item ?? undefined;
           if (sourceHandle === "out-bottom-0") return outputs[2]?.item ?? undefined;
         }
+        return undefined;
+      };
+
+      const resolveSplitterIncomingItems = (
+        splitterNode: Node,
+      ): string[] => {
+        const incoming = edgesRef.current.filter((edge) => {
+          const targetId =
+            (edge.data as Record<string, unknown> | undefined)
+              ?.virtualTargetId ?? edge.target;
+          return targetId === splitterNode.id;
+        });
+        const items = new Set<string>();
+        incoming.forEach((edge) => {
+          const sourceId =
+            (edge.data as Record<string, unknown> | undefined)
+              ?.virtualSourceId ?? edge.source;
+          const source = nodesRef.current.find((n) => n.id === sourceId);
+          const itemId = getDirectItemId(
+            source,
+            edge.sourceHandle,
+            edge.targetHandle,
+          );
+          if (itemId) items.add(itemId);
+        });
+        return Array.from(items);
+      };
+
+      const getEdgeItemId = (
+        node: Node | undefined,
+        sourceHandle?: string | null,
+        targetHandle?: string | null,
+      ): string | undefined => {
+        if (!node) return undefined;
+        if (node.type !== "smartSplitter") {
+          return getDirectItemId(node, sourceHandle, targetHandle);
+        }
+        const explicit = getDirectItemId(node, sourceHandle, targetHandle);
+        if (explicit) return explicit;
+        const incomingItems = resolveSplitterIncomingItems(node);
+        if (incomingItems.length === 1) return incomingItems[0];
         return undefined;
       };
 
@@ -1027,11 +1078,7 @@ function AppContent() {
         if (selectedNodeIdRef.current === nodeId) {
           const updated = updatedNodes.find((node) => node.id === nodeId);
           if (updated) {
-            setSelectedNodeSnapshot({
-              id: updated.id,
-              type: updated.type,
-              data: updated.data,
-            });
+            setSelectedNodeSnapshot(buildNodeSnapshot(updated));
           }
         }
 
@@ -1240,8 +1287,8 @@ function AppContent() {
     const isStackParent = stackCount && stackCount > 1 && stackActiveId;
     const targetId = isStackParent ? stackActiveId : node.id;
     setSelectedNodeId(targetId);
-    setSelectedNodeSnapshot({ id: node.id, type: node.type, data: node.data });
-  }, []);
+    captureNodeSnapshot(targetId);
+  }, [captureNodeSnapshot]);
 
   const handlePaneClick = useCallback(() => {
     allowPanelRef.current = false;
@@ -1603,6 +1650,9 @@ function AppContent() {
 
     const getProvidedItems = (node: Node, edge?: Edge): string[] => {
       const data = node.data as Record<string, unknown>;
+      const stackActiveData = data.stackActiveData as
+        | Record<string, unknown>
+        | undefined;
       const edgeItemId = (edge?.data as Record<string, unknown> | undefined)
         ?.itemId as string | undefined;
       if (edgeItemId) return [edgeItemId];
@@ -1612,9 +1662,14 @@ function AppContent() {
           (b) => b.id === buildingId,
         );
         if (building?.category === "storage") {
-          return data.storedItem ? [data.storedItem as string] : [];
+          const storedItem =
+            (data.storedItem as string | undefined) ??
+            (stackActiveData?.storedItem as string | undefined);
+          return storedItem ? [storedItem] : [];
         }
-        const outputItem = data.outputItem as string | undefined;
+        const outputItem =
+          (data.outputItem as string | undefined) ??
+          (stackActiveData?.outputItem as string | undefined);
         if (outputItem) return [outputItem];
         if (building?.fixedOutput) return [building.fixedOutput];
         if (building?.outputs && building.outputs.length > 0) {
@@ -1704,6 +1759,10 @@ function AppContent() {
 
     return map;
   }, [edges, nodeById]);
+
+  useEffect(() => {
+    incomingItemsByNodeRef.current = incomingItemsByNode;
+  }, [incomingItemsByNode]);
 
   const splitterAutoOutputsById = useMemo(() => {
     const map = new Map<
@@ -1922,8 +1981,8 @@ function AppContent() {
     if (!selectedNodeId) return;
     const node = layeredNodes.find((n) => n.id === selectedNodeId);
     if (!node) return;
-    setSelectedNodeSnapshot({ id: node.id, type: node.type, data: node.data });
-  }, [selectedNodeId, layeredNodes]);
+    setSelectedNodeSnapshot(buildNodeSnapshot(node));
+  }, [selectedNodeId, layeredNodes, buildNodeSnapshot]);
 
   // Filter edges for visible layers
   const layeredEdges = useMemo(() => {

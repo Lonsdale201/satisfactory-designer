@@ -124,20 +124,39 @@ function Sidebar({
   const energyStats = useMemo(() => {
     let totalPower = 0;
     const buildingPowers: { name: string; power: number }[] = [];
+    const layerTotals = new Map<number, number>();
 
     nodes.forEach((node) => {
       if (node.type === "building" && node.data) {
-        const data = node.data as { buildingId?: string; powerUsage?: number };
+        const data = node.data as {
+          buildingId?: string;
+          powerUsage?: number;
+          layer?: number;
+          stackCount?: number;
+          isStacked?: boolean;
+        };
+        if (data.isStacked) return;
         const building = buildings.find((b) => b.id === data.buildingId);
         if (building && building.category !== "storage") {
-          const power = data.powerUsage || building.defaultPower;
+          const stackCount = data.stackCount || 1;
+          const power = (data.powerUsage || building.defaultPower) * stackCount;
+          const layer = data.layer || 1;
           totalPower += power;
-          buildingPowers.push({ name: building.name, power });
+          buildingPowers.push({
+            name: stackCount > 1 ? `${building.name} x${stackCount}` : building.name,
+            power,
+          });
+          layerTotals.set(layer, (layerTotals.get(layer) || 0) + power);
         }
       }
     });
 
-    return { totalPower, buildingPowers };
+    const layerPowers = Array.from(layerTotals.entries())
+      .filter(([, power]) => power > 0)
+      .sort((a, b) => a[0] - b[0])
+      .map(([layer, power]) => ({ layer, power }));
+
+    return { totalPower, buildingPowers, layerPowers };
   }, [nodes]);
 
   // Calculate item flow stats
@@ -877,6 +896,30 @@ function Sidebar({
             <Typography variant="subtitle2" color="#888" gutterBottom>
               Power Breakdown
             </Typography>
+
+            {energyStats.layerPowers.length > 1 && (
+              <>
+                <Typography variant="subtitle2" color="#888" gutterBottom>
+                  Power by Layer
+                </Typography>
+                <List dense sx={{ mb: 2 }}>
+                  {energyStats.layerPowers.map((lp) => (
+                    <ListItem key={`layer-${lp.layer}`} sx={{ py: 0.5 }}>
+                      <ListItemText
+                        primary={`Layer ${lp.layer}`}
+                        primaryTypographyProps={{
+                          color: "#fff",
+                          fontSize: "0.85rem",
+                        }}
+                      />
+                      <Typography variant="body2" color="#f1c40f">
+                        {lp.power.toFixed(1)} MW
+                      </Typography>
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            )}
 
             {energyStats.buildingPowers.length === 0 ? (
               <Typography

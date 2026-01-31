@@ -14,6 +14,7 @@
 - Missing Refinery production items restored (recipes still in progress)
 - Missing items added back to their producer building lists
 - Conveyor Lift no longer gets deleted due to stale cross-layer selection
+- Fixed smart splitter so storage flow calculations work when storage is connected through a splitter
 
 ### Added
 

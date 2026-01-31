@@ -583,19 +583,26 @@ export const InputsPanel = memo(
             transform: inputsExpanded ? "rotate(90deg)" : "rotate(0deg)",
           }}
         >
-          {">"}
+          ▶
         </span>
         <span style={{ fontSize: 11, color: "#9ca3af", flex: 1 }}>
           Inputs ({requiredInputs.length})
         </span>
       </div>
-      {inputsExpanded && (
+      <div
+        style={{
+          maxHeight: inputsExpanded ? 320 : 0,
+          opacity: inputsExpanded ? 1 : 0,
+          overflow: "hidden",
+          transition: "max-height 220ms ease, opacity 160ms ease",
+        }}
+      >
         <div
           style={{
-            padding: "6px 8px",
+            padding: inputsExpanded ? "6px 8px" : "0 8px",
             display: "grid",
             gridTemplateColumns: "1fr",
-            gap: 6,
+            gap: inputsExpanded ? 6 : 0,
           }}
         >
           {requiredInputs.map((req, index) => {
@@ -674,7 +681,7 @@ export const InputsPanel = memo(
             );
           })}
         </div>
-      )}
+      </div>
     </div>
   ),
 );
