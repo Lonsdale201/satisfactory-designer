@@ -80,6 +80,11 @@ When switching levels:
 
 Multiple identical nodes (e.g., Smelters) can be **stacked** to save space. Stacks can be unstacked at any time.
 
+How to stack:
+1. Hold **Ctrl** (or the Mac equivalent) and select identical nodes (e.g., 3 Smelters).
+2. A blue **Stack** icon appears in the header next to the calculation button — click it.
+3. To unstack, click the stacked node and use the same **Stack** icon in the header.
+
 ### Stack Rules
 - Must be the same building type
 - Must have the same outgoing belt/pipe type
