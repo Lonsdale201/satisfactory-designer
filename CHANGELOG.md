@@ -9,6 +9,7 @@
 ### Fixed
 
 - Calculation system improvements
+- ghost mode Group (prod line) color fixing
 
 ### Changed
 

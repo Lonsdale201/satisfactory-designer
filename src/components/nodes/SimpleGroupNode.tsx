@@ -52,6 +52,8 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
   const lockChildren = (data.lockChildren as boolean) ?? true;
   const comment = (data.comment as string | undefined) || '';
   const formatNum = (value: number) => (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1));
+  const ghostSurfaceAlpha = 0.02;
+  const ghostPanelAlpha = 0.06;
 
   return (
     <div
@@ -59,7 +61,7 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
         width: '100%',
         height: '100%',
         borderRadius: 12,
-        background: hexToRgba(color, isGhost ? 0.03 : 0.12),
+        background: hexToRgba(color, isGhost ? ghostSurfaceAlpha : 0.12),
         border: selected ? `3px solid ${color}` : `2px dashed ${color}`,
         boxShadow: 'none',
         padding: 10,
@@ -158,7 +160,7 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
             marginBottom: 8,
             padding: '6px 8px',
             borderRadius: 8,
-            background: hexToRgba(color, 0.12),
+            background: hexToRgba(color, isGhost ? ghostPanelAlpha : 0.12),
             border: `1px solid ${color}55`,
             color: '#cbd5f5',
             fontSize: 11,

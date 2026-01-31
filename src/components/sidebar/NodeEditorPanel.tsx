@@ -21,7 +21,7 @@ import { Building, Item } from '../../types';
 import buildingsData from '../../data/buildings.json';
 import itemsData from '../../data/items.json';
 import { PROJECT_ASSEMBLY_ITEM_IDS } from '../nodes/GoalNode';
-import { themeMap } from '../../constants/themeMap';
+import { themeMap, themeOptions } from '../../constants/themeMap';
 
 const buildings: Building[] = buildingsData.buildings as Building[];
 const items: Item[] = itemsData.items;
@@ -115,20 +115,6 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
   const groupThemeColors =
     themeMap[groupThemeValue as keyof typeof themeMap] || themeMap.orange;
   const nodeThemeValue = (nodeData?.theme as string) || '';
-
-  const themeOptions = [
-    { label: 'Default', value: '' },
-    { label: 'Dark', value: 'dark' },
-    { label: 'Orange', value: 'orange' },
-    { label: 'Blue', value: 'blue' },
-    { label: 'Purple', value: 'purple' },
-    { label: 'Slate', value: 'slate' },
-    { label: 'Green', value: 'green' },
-    { label: 'Rose', value: 'rose' },
-    { label: 'Teal', value: 'teal' },
-    { label: 'Amber', value: 'amber' },
-    { label: 'Indigo', value: 'indigo' },
-  ];
 
   const availableOutputs = useMemo(() => {
     if (!selectedBuilding) return [];

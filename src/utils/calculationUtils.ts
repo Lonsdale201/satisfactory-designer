@@ -487,9 +487,14 @@ export function calculateNodeStatuses(
     const stackCount = data.stackCount as number | undefined;
     const stackActiveId = data.stackActiveId as string | undefined;
     if (stackCount && stackCount > 1 && stackActiveId) {
-      const activeStatus = nodeStatuses[stackActiveId];
-      if (activeStatus) {
-        nodeStatuses[node.id] = { ...activeStatus };
+      const parentIncoming = incomingEdges[node.id] || [];
+      const parentOutgoing = outgoingEdges[node.id] || [];
+      const hasDirectEdges = parentIncoming.length > 0 || parentOutgoing.length > 0;
+      if (!hasDirectEdges) {
+        const activeStatus = nodeStatuses[stackActiveId];
+        if (activeStatus) {
+          nodeStatuses[node.id] = { ...activeStatus };
+        }
       }
     }
   });

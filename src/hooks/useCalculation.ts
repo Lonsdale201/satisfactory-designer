@@ -46,29 +46,54 @@ export function useCalculation({
       buildings,
     });
 
+    const parentByChild = new Map<string, string>();
+    currentNodes.forEach((node) => {
+      const data = node.data as Record<string, unknown>;
+      const stackedNodeIds = data.stackedNodeIds as string[] | undefined;
+      if (stackedNodeIds?.length) {
+        stackedNodeIds.forEach((id) => parentByChild.set(id, node.id));
+      }
+    });
+
+    const nodeHasEdge = (id: string): boolean =>
+      currentEdges.some((edge) => {
+        const edgeData = edge.data as Record<string, unknown> | undefined;
+        const sourceId = (edgeData?.virtualSourceId as string | undefined) ?? edge.source;
+        const targetId = (edgeData?.virtualTargetId as string | undefined) ?? edge.target;
+        return sourceId === id || targetId === id;
+      });
+
     // Update nodes with calculated status, propagating to stacked children
     setNodes(nds => nds.map(node => {
       const data = node.data as Record<string, unknown>;
       const isStacked = data.isStacked as boolean | undefined;
       if (isStacked) {
+          const parentId = parentByChild.get(node.id);
+          const parentStatus = parentId ? nodeStatuses[parentId] : undefined;
+          const ownStatus = nodeStatuses[node.id];
+          const shouldInherit =
+            parentStatus &&
+            !parentStatus.disconnected &&
+            !nodeHasEdge(node.id);
+          const status = shouldInherit ? parentStatus : ownStatus;
           return {
             ...node,
             data: {
               ...node.data,
-              calcStatus: nodeStatuses[node.id]?.status || null,
-              calcSupply: nodeStatuses[node.id]?.supply || 0,
-              calcDemand: nodeStatuses[node.id]?.demand || 0,
-              calcInputDetails: nodeStatuses[node.id]?.inputDetails,
-              storageFlow: nodeStatuses[node.id]?.storageFlow,
+              calcStatus: status?.status || null,
+              calcSupply: status?.supply || 0,
+              calcDemand: status?.demand || 0,
+              calcInputDetails: status?.inputDetails,
+              storageFlow: status?.storageFlow,
               calcTerminalInputOnly:
-                nodeStatuses[node.id]?.terminalInputOnly || false,
-              calcMismatchIncoming: nodeStatuses[node.id]?.mismatchIncoming || false,
-              calcMismatchOutgoing: nodeStatuses[node.id]?.mismatchOutgoing || false,
+                status?.terminalInputOnly || false,
+              calcMismatchIncoming: status?.mismatchIncoming || false,
+              calcMismatchOutgoing: status?.mismatchOutgoing || false,
               calcMismatchOutgoingCount:
-                nodeStatuses[node.id]?.mismatchOutgoingCount || 0,
+                status?.mismatchOutgoingCount || 0,
               calcMismatchOutgoingTotal:
-                nodeStatuses[node.id]?.mismatchOutgoingTotal || 0,
-              calcDisconnected: nodeStatuses[node.id]?.disconnected || false,
+                status?.mismatchOutgoingTotal || 0,
+              calcDisconnected: status?.disconnected || false,
             }
           };
       }

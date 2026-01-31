@@ -70,6 +70,13 @@ export const themeMap: Record<string, ThemeColors> = {
     text: "#1a170f",
     box: "#1a1a2e",
   },
+  limestone: {
+    header: "#d6b48c",
+    body: "#2a241b",
+    border: "#d6b48c",
+    text: "#1a140d",
+    box: "#1a1a2e",
+  },
   indigo: {
     header: "#6366f1",
     body: "#1e1a2e",
@@ -78,6 +85,28 @@ export const themeMap: Record<string, ThemeColors> = {
     box: "#2d2640",
   },
 };
+
+const themeOrder = [
+  "dark",
+  "orange",
+  "blue",
+  "purple",
+  "slate",
+  "green",
+  "rose",
+  "teal",
+  "amber",
+  "limestone",
+  "indigo",
+] as const;
+
+const formatThemeLabel = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1);
+
+export const themeOptions = [
+  { label: "Default", value: "" },
+  ...themeOrder.map((value) => ({ label: formatThemeLabel(value), value })),
+];
 
 export const getThemeColors = (theme?: string) =>
   (theme && themeMap[theme]) || themeMap.orange;

@@ -76,12 +76,21 @@ const SimpleBuildingNode = memo(
     const isGhost = data.isGhost ?? false;
     const stackCount = data.stackCount ?? 1;
     const isStackParent = stackCount > 1;
+    const isStacked = (data as Record<string, unknown>).isStacked as
+      | boolean
+      | undefined;
     const stackLayers = Math.min(stackCount - 1, 3);
     const stackActiveIndex =
       typeof data.stackActiveIndex === "number" ? data.stackActiveIndex : 0;
     const stackActiveData = (data as Record<string, unknown>)
       .stackActiveData as Record<string, unknown> | undefined;
     const displayData = (stackActiveData ?? data) as typeof data;
+    const incomingItems = (data as Record<string, unknown>).incomingItems as
+      | string[]
+      | undefined;
+    const hasIncomingItems = (incomingItems?.length ?? 0) > 0;
+    const calcDisconnected =
+      displayData.calcDisconnected && !(isStacked && hasIncomingItems);
 
     const selectedBuilding = buildings.find(
       (b) => b.id === (displayData.buildingId as string),
@@ -170,9 +179,6 @@ const SimpleBuildingNode = memo(
         }
       : {};
 
-    const incomingItems = (data as Record<string, unknown>).incomingItems as
-      | string[]
-      | undefined;
     const {
       recipes,
       recipeEntries,
@@ -741,7 +747,7 @@ const SimpleBuildingNode = memo(
                   )}
 
                 {ui.showProductionEfficiency &&
-                  displayData.calcDisconnected &&
+                  calcDisconnected &&
                   selectedBuilding?.category !== "storage" && (
                     <div
                       style={{
@@ -768,7 +774,7 @@ const SimpleBuildingNode = memo(
                   )}
 
                 {ui.showProductionEfficiency &&
-                  !displayData.calcDisconnected &&
+                  !calcDisconnected &&
                   !displayData.calcMismatchIncoming &&
                   !displayData.calcMismatchOutgoing &&
                   displayData.calcStatus &&
@@ -792,7 +798,7 @@ const SimpleBuildingNode = memo(
                     />
                   )}
 
-                {!displayData.calcDisconnected &&
+                {!calcDisconnected &&
                   (displayData.calcMismatchOutgoing ||
                     displayData.calcMismatchIncoming) &&
                   selectedBuilding?.category !== "storage" && (

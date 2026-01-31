@@ -1832,6 +1832,23 @@ function AppContent() {
   const incomingItemsByNode = useMemo(() => {
     const map = new Map<string, string[]>();
 
+    const addItemsToTarget = (targetId: string, items: string[]) => {
+      if (!targetId || items.length === 0) return;
+      const addToNode = (nodeId: string) => {
+        const current = map.get(nodeId) || [];
+        const merged = new Set([...current, ...items]);
+        map.set(nodeId, Array.from(merged));
+      };
+      addToNode(targetId);
+      const targetNode = nodeById.get(targetId);
+      const targetData = targetNode?.data as Record<string, unknown> | undefined;
+      const stackedNodeIds = targetData?.stackedNodeIds as string[] | undefined;
+      const stackCount = targetData?.stackCount as number | undefined;
+      if (stackCount && stackCount > 1 && stackedNodeIds?.length) {
+        stackedNodeIds.forEach(addToNode);
+      }
+    };
+
     const getProvidedItems = (node: Node, edge?: Edge): string[] => {
       const data = node.data as Record<string, unknown>;
       const stackActiveData = data.stackActiveData as
@@ -1885,9 +1902,7 @@ function AppContent() {
       if (!source) return;
       const items = getProvidedItems(source, edge);
       if (items.length === 0) return;
-      const current = map.get(targetId) || [];
-      const merged = new Set([...current, ...items]);
-      map.set(targetId, Array.from(merged));
+      addItemsToTarget(targetId, items);
     });
 
     // Second pass: let conveyor lifts pass through their incoming items even if not explicitly set
@@ -1905,9 +1920,7 @@ function AppContent() {
       if (hasExplicitItem) return;
       const incomingItems = map.get(source.id) || [];
       if (incomingItems.length === 0) return;
-      const current = map.get(targetId) || [];
-      const merged = new Set([...current, ...incomingItems]);
-      map.set(targetId, Array.from(merged));
+      addItemsToTarget(targetId, incomingItems);
     });
 
     // Third pass: let smart splitters pass through incoming items when output filter is "Any"
@@ -1936,9 +1949,7 @@ function AppContent() {
       if (outputItem) return;
       const incomingItems = map.get(source.id) || [];
       if (incomingItems.length === 0) return;
-      const current = map.get(targetId) || [];
-      const merged = new Set([...current, ...incomingItems]);
-      map.set(targetId, Array.from(merged));
+      addItemsToTarget(targetId, incomingItems);
     });
 
     return map;
@@ -2072,24 +2083,27 @@ function AppContent() {
             draggable: data.isStacked ? false : node.draggable,
             hidden: node.hidden || data.isStacked,
           };
-        } else if (nodeLayer === currentLayer - 1) {
-          // One layer below - ghost mode
-          if (node.type === "conveyorLift") {
-            const direction = (data.direction as "up" | "down") || "up";
-            const targetLayer =
-              (data.targetLayer as number) ??
-              (direction === "up" ? nodeLayer + 1 : nodeLayer - 1);
-            if (targetLayer === currentLayer) {
-              return null;
+          } else if (nodeLayer === currentLayer - 1) {
+            // One layer below - ghost mode
+            if (node.type === "conveyorLift") {
+              const direction = (data.direction as "up" | "down") || "up";
+              const targetLayer =
+                (data.targetLayer as number) ??
+                (direction === "up" ? nodeLayer + 1 : nodeLayer - 1);
+              if (targetLayer === currentLayer) {
+                return null;
+              }
             }
-          }
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              isGhost: true,
-              incomingItems,
-              autoAssignedOutputs: splitterOutputs,
+            const ghostZIndex =
+              node.type === "group" ? -5 : (node.zIndex as number | undefined);
+            return {
+              ...node,
+              zIndex: ghostZIndex,
+              data: {
+                ...node.data,
+                isGhost: true,
+                incomingItems,
+                autoAssignedOutputs: splitterOutputs,
               connectedItems: goalConnections?.connectedItems,
               missingItems: goalConnections?.missingItems,
               stackActiveData,

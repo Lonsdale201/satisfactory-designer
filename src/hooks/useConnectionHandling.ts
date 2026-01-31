@@ -173,6 +173,16 @@ export function useConnectionHandling({
       const targetNode = nodesRef.current.find(
         (n) => n.id === resolvedParams.target,
       );
+      const targetData = targetNode?.data as Record<string, unknown> | undefined;
+      const stackActiveId = targetData?.stackActiveId as string | undefined;
+      const stackedNodeIds = targetData?.stackedNodeIds as string[] | undefined;
+      const isStackParent =
+        Boolean(
+          targetData?.stackCount &&
+            (targetData.stackCount as number) > 1 &&
+            stackedNodeIds &&
+            stackedNodeIds.length > 1,
+        );
 
       let resolvedSourceType =
         sourceType ?? resolveDefaultType(sourceNode, "output");
@@ -195,17 +205,12 @@ export function useConnectionHandling({
         return;
 
       // Auto-set production building output based on incoming item
+      let applyToAllStackMembers = false;
       if (targetNode?.type === "building") {
-        const sourceData = (sourceNode?.data as Record<string, unknown>) || {};
-        const targetData = targetNode.data as Record<string, unknown>;
-        const targetBuildingId = targetData.buildingId as string;
+        const targetBuildingId = targetData?.buildingId as string | undefined;
+        const incomingItem = getIncomingItem(sourceNode, params.sourceHandle);
 
-        let incomingItem: string | undefined;
-        if (sourceNode?.type === "building") {
-          incomingItem = sourceData.outputItem as string | undefined;
-        }
-
-        if (incomingItem && !targetData.outputItem) {
+        if (incomingItem && targetBuildingId) {
           const matchingItems = itemsData.items.filter((item) => {
             if (!item.producers || !item.producers.includes(targetBuildingId))
               return false;
@@ -216,19 +221,32 @@ export function useConnectionHandling({
           if (matchingItems.length === 1) {
             const matchedItem = matchingItems[0];
             const defaultProduction = matchedItem.defaultProduction || 30;
+
+            applyToAllStackMembers =
+              isStackParent &&
+              stackedNodeIds &&
+              stackedNodeIds.every((id) => {
+                const node = nodesRef.current.find((n) => n.id === id);
+                const outputItem = (node?.data as Record<string, unknown>)
+                  ?.outputItem as string | undefined;
+                return !outputItem || outputItem === matchedItem.id;
+              });
+
+            const targetIds = applyToAllStackMembers
+              ? stackedNodeIds || [resolvedParams.target as string]
+              : [stackActiveId || (resolvedParams.target as string)];
+
             setNodes((nds) =>
               nds.map((n) => {
-                if (n.id === resolvedParams.target) {
-                  return {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      outputItem: matchedItem.id,
-                      production: defaultProduction,
-                    },
-                  };
-                }
-                return n;
+                if (!targetIds?.includes(n.id)) return n;
+                return {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    outputItem: matchedItem.id,
+                    production: defaultProduction,
+                  },
+                };
               }),
             );
           }
@@ -296,7 +314,13 @@ export function useConnectionHandling({
             source: resolvedParams.source,
             target: resolvedParams.target,
             type: "custom",
-            data: { label, material: resolvedSourceType },
+            data: {
+              label,
+              material: resolvedSourceType,
+              ...(isStackParent && stackActiveId && !applyToAllStackMembers
+                ? { virtualTargetId: stackActiveId }
+                : {}),
+            },
           } as Connection,
           eds,
         );
