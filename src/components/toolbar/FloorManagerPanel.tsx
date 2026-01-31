@@ -46,14 +46,18 @@ export const FloorManagerPanel = memo(function FloorManagerPanel({
 
   useEffect(() => {
     if (!open) return;
-    const next: Record<number, string> = {};
-    floors.forEach((floor) => {
-      next[floor.layer] = floor.name;
+    setEditNames((prev) => {
+      const next = { ...prev };
+      floors.forEach((floor) => {
+        if (next[floor.layer] === undefined) {
+          next[floor.layer] = floor.name;
+        }
+      });
+      if (next[currentLayer] === undefined) {
+        next[currentLayer] = `Floor ${currentLayer}`;
+      }
+      return next;
     });
-    if (next[currentLayer] === undefined) {
-      next[currentLayer] = `Floor ${currentLayer}`;
-    }
-    setEditNames(next);
   }, [open, floors, currentLayer]);
   const orderedFloors = [...floors].sort((a, b) => {
     if (a.layer === currentLayer) return -1;
