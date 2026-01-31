@@ -966,7 +966,7 @@ function traceBackToProducers(
     if (!sourceNode) return;
     const incomingItemId = getEdgeItemId(edge, sourceNode, itemById);
     if (incomingItemId) {
-      const required = getRequiredItemIdsForNode(node, nodes, itemById);
+      const required = getRequiredItemIdsForNode(startNode, nodes, itemById);
       if (required.size > 0 && !required.has(incomingItemId)) return;
     }
 

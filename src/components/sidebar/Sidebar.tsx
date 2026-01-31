@@ -196,12 +196,15 @@ function Sidebar({
       "oil_extractor",
       "resource_well_extractor",
     ].includes(building.id);
+    const defaultOutput =
+      building.fixedOutput ||
+      (building.category === "extraction" ? building.outputs?.[0] ?? "" : "");
     onAddNode("building", {
       buildingId: building.id,
       production: building.defaultProduction,
       powerUsage: building.category === "storage" ? 0 : building.defaultPower,
       iconUrl: getBuildingIconUrl(building.id),
-      outputItem: building.fixedOutput || "",
+      outputItem: defaultOutput,
       purity: hasPurity ? "normal" : "",
       inputCount: building.inputs ?? 0,
     });

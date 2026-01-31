@@ -9,11 +9,12 @@
 - Missing item list made more compact to keep nodes from growing too wide
 
 ### Changed
-
 - New item logic: removed hard-coded filters to support flexible alternate recipes
 - Storage fill calculations now work for solid and fluid containers
 - Hybrid output buildings (e.g. Refinery) output logic fixed
 - Transport node removed (distance-based results were unreliable)
+- Smart Splitter issues fixed
+- Output conveyor type is now unified (single MK for all outputs)
 
 
 

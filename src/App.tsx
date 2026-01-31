@@ -426,6 +426,31 @@ function AppContent() {
     }
   }, [isInitialized, handleCalculate, calcEnabledRef]);
 
+  useEffect(() => {
+    if (!isInitialized) return;
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.type !== "building") return node;
+        const data = node.data as Record<string, unknown>;
+        const buildingId = data.buildingId as string | undefined;
+        if (!buildingId) return node;
+        const building = buildingsData.buildings.find(
+          (b) => b.id === buildingId,
+        );
+        if (!building || building.category !== "extraction") return node;
+        const outputItem = data.outputItem as string | undefined;
+        if (outputItem) return node;
+        const fallback = building.outputs?.[0];
+        if (!fallback) return node;
+        return {
+          ...node,
+          data: { ...node.data, outputItem: fallback },
+        };
+      }),
+    );
+  }, [isInitialized, setNodes]);
+
+
   // Export handler
   const handleExport = useCallback(() => {
     exportToFile(nodes, edges, nodeIdCounter);
@@ -760,9 +785,9 @@ function AppContent() {
             | Array<{ item: string | null }>
             | undefined;
           if (!outputs) return undefined;
-          if (handleId === "out-top-0") return outputs[0]?.item ?? undefined;
-          if (handleId === "out-right-0") return outputs[1]?.item ?? undefined;
-          if (handleId === "out-bottom-0") return outputs[2]?.item ?? undefined;
+          if (sourceHandle === "out-top-0") return outputs[0]?.item ?? undefined;
+          if (sourceHandle === "out-right-0") return outputs[1]?.item ?? undefined;
+          if (sourceHandle === "out-bottom-0") return outputs[2]?.item ?? undefined;
         }
         return undefined;
       };
@@ -1269,7 +1294,7 @@ function AppContent() {
     const isStackParent = stackCount && stackCount > 1 && stackActiveId;
     const targetId = isStackParent ? stackActiveId : node.id;
     setSelectedNodeId(targetId);
-    captureNodeSnapshot(targetId);
+    setSelectedNodeSnapshot({ id: node.id, type: node.type, data: node.data });
   }, []);
 
   const handlePaneClick = useCallback(() => {
@@ -1679,6 +1704,37 @@ function AppContent() {
       map.set(targetId, Array.from(merged));
     });
 
+    // Third pass: let smart splitters pass through incoming items when output filter is "Any"
+    edges.forEach((edge) => {
+      const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualSourceId as string | undefined;
+      const virtualTargetId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualTargetId as string | undefined;
+      const sourceId = virtualSourceId || edge.source;
+      const targetId = virtualTargetId || edge.target;
+      const source = nodeById.get(sourceId);
+      if (!source || source.type !== "smartSplitter") return;
+      const sourceData = source.data as Record<string, unknown>;
+      const splitOutputs = (sourceData.splitOutputs as
+        | Array<{ item: string | null }>
+        | undefined) ?? [
+        { item: null },
+        { item: null },
+        { item: null },
+      ];
+      const handle = edge.sourceHandle || "";
+      let outputItem: string | null | undefined;
+      if (handle === "out-top-0") outputItem = splitOutputs[0]?.item;
+      if (handle === "out-right-0") outputItem = splitOutputs[1]?.item;
+      if (handle === "out-bottom-0") outputItem = splitOutputs[2]?.item;
+      if (outputItem) return;
+      const incomingItems = map.get(source.id) || [];
+      if (incomingItems.length === 0) return;
+      const current = map.get(targetId) || [];
+      const merged = new Set([...current, ...incomingItems]);
+      map.set(targetId, Array.from(merged));
+    });
+
     return map;
   }, [edges, nodeById]);
 
@@ -1894,6 +1950,13 @@ function AppContent() {
       return 0;
     });
   }, [nodes, currentLayer, getLiftGhostsForLayer]);
+
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    const node = layeredNodes.find((n) => n.id === selectedNodeId);
+    if (!node) return;
+    setSelectedNodeSnapshot({ id: node.id, type: node.type, data: node.data });
+  }, [selectedNodeId, layeredNodes]);
 
   // Filter edges for visible layers
   const layeredEdges = useMemo(() => {

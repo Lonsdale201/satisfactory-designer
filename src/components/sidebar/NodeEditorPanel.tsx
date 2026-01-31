@@ -420,44 +420,45 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
               <Typography component="legend" variant="caption" sx={{ color: '#9ca3af', px: 0.5 }}>
                 Output Conveyors
               </Typography>
+              <Typography variant="caption" sx={{ color: '#666', fontSize: 10 }}>
+                Applies to all outgoing conveyors
+              </Typography>
 
-              {(['Top', 'Right', 'Bottom'] as const).map((label, index) => {
+              {(() => {
                 const splitOutputs = (nodeData?.splitOutputs as Array<{ item: string | null; conveyorMk: number }>) || [
                   { item: null, conveyorMk: 1 },
                   { item: null, conveyorMk: 1 },
                   { item: null, conveyorMk: 1 },
                 ];
-                const output = splitOutputs[index] || { item: null, conveyorMk: 1 };
+                const selectedMk = splitOutputs[0]?.conveyorMk ?? 1;
                 return (
-                  <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="caption" sx={{ color: '#9ca3af', width: 50 }}>
-                      {label}
-                    </Typography>
-                    <FormControl fullWidth size="small">
-                      <Select
-                        value={output.conveyorMk}
-                        onChange={(e) => {
-                          const newOutputs = [...splitOutputs];
-                          newOutputs[index] = { ...newOutputs[index], conveyorMk: Number(e.target.value) };
-                          dispatchChange('splitOutputs', newOutputs);
-                        }}
-                        sx={{
-                          bgcolor: '#0f172a',
-                          color: '#fff',
-                          '& .MuiSelect-icon': { color: '#9ca3af' },
-                        }}
-                      >
-                        <MenuItem value={1}>Mk.1 (60/min)</MenuItem>
-                        <MenuItem value={2}>Mk.2 (120/min)</MenuItem>
-                        <MenuItem value={3}>Mk.3 (270/min)</MenuItem>
-                        <MenuItem value={4}>Mk.4 (480/min)</MenuItem>
-                        <MenuItem value={5}>Mk.5 (780/min)</MenuItem>
-                        <MenuItem value={6}>Mk.6 (1200/min)</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={selectedMk}
+                      onChange={(e) => {
+                        const nextMk = Number(e.target.value);
+                        const newOutputs = splitOutputs.map((out) => ({
+                          ...out,
+                          conveyorMk: nextMk,
+                        }));
+                        dispatchChange('splitOutputs', newOutputs);
+                      }}
+                      sx={{
+                        bgcolor: '#0f172a',
+                        color: '#fff',
+                        '& .MuiSelect-icon': { color: '#9ca3af' },
+                      }}
+                    >
+                      <MenuItem value={1}>Mk.1 (60/min)</MenuItem>
+                      <MenuItem value={2}>Mk.2 (120/min)</MenuItem>
+                      <MenuItem value={3}>Mk.3 (270/min)</MenuItem>
+                      <MenuItem value={4}>Mk.4 (480/min)</MenuItem>
+                      <MenuItem value={5}>Mk.5 (780/min)</MenuItem>
+                      <MenuItem value={6}>Mk.6 (1200/min)</MenuItem>
+                    </Select>
+                  </FormControl>
                 );
-              })}
+              })()}
             </Box>
 
             <Box
