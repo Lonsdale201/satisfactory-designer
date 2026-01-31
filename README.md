@@ -82,7 +82,7 @@ Multiple identical nodes (e.g., Smelters) can be **stacked** to save space. Stac
 
 How to stack:
 1. Hold **Ctrl** (or the Mac equivalent) and select identical nodes (e.g., 3 Smelters).
-2. A blue **Stack** icon appears in the header next to the calculation button — click it.
+2. A blue **Stack** icon appears in the header next to the calculation button -- click it.
 3. To unstack, click the stacked node and use the same **Stack** icon in the header.
 
 ### Stack Rules
@@ -105,3 +105,84 @@ A grouping system for organizing your factory:
 ### Group Behavior
 - Moving the group moves all contained nodes together
 - Nodes cannot be removed from the group until you unlock the **Lock** system
+
+---
+
+## Getting Started (Developers)
+
+After forking or cloning the repo:
+
+1. Install dependencies:
+   - `npm install`
+2. Start the dev server:
+   - `npm run dev`
+3. Build for production:
+   - `npm run build`
+
+---
+
+## Developer Notes
+
+### Tech stack
+- Vite + React + TypeScript
+- React Flow for the node editor
+
+### Data "database" (JSON)
+Main data lives in:
+- `src/data/items.json`
+- `src/data/buildings.json`
+
+**Items** typically include:
+- `id`, `name`, `category`, `stackSize`
+- `producers` (building ids that can make it)
+- `defaultProduction` and optional `recipes` / `byproducts`
+- `alternateRequires` + `alternateOutputRates` for alternate recipes
+
+**Buildings** typically include:
+- `id`, `name`, `category` (extraction, production, storage, etc.)
+- `inputs` / `outputs` counts
+- `inputTypes` / `outputTypes` (conveyor or pipe)
+- `defaultProduction`, `defaultPower`
+- storage fields like `inventorySize` and `inventoryUnit`
+
+### Recipe handling (high level)
+- The active recipe is picked from the item `recipes` list.
+- Default recipe index is used unless a specific recipe is selected on the node.
+- Alternate recipes are stored on the item (`alternateRequires`, `alternateOutputRates`)
+  and activated via `selectedAltIndex`.
+- Byproducts are stored in the recipe and used for output + pipe logic.
+
+### Calculation flow
+- Core logic lives in `src/utils/calculationUtils.ts`.
+- `useCalculation` triggers recalculation and writes results into node data
+  (status, supply/demand, storage flow, mismatch flags).
+
+### Node UI
+- Building node UI: `src/components/nodes/SimpleBuildingNode.tsx`
+- Group (Prod Line) node UI: `src/components/nodes/SimpleGroupNode.tsx`
+- Smart Splitter UI: `src/components/nodes/SmartSplitterNode.tsx`
+
+### Node schema (saved state)
+Nodes are persisted as JSON objects (React Flow format). A simplified example:
+
+```json
+{
+  "id": "building-12",
+  "type": "building",
+  "position": { "x": 520, "y": 340 },
+  "data": {
+    "buildingId": "smelter",
+    "outputItem": "iron_ingot",
+    "production": 30,
+    "conveyorMk": 1,
+    "pipeMk": 1,
+    "theme": "orange",
+    "customLabel": "",
+    "showIo": true
+  }
+}
+```
+
+Edges are also stored as JSON and include `source`, `target`, handles, and
+optional `data` (label, material, itemId, virtualSourceId/virtualTargetId).
+
