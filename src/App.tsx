@@ -368,6 +368,7 @@ function AppContent() {
     alwaysShowEdgeLabels: uiSettings.alwaysShowEdgeLabels,
     hoveredEdgeId: hoveredEdgeId,
     isDragging: isDragging,
+    hideGhostConnectionLines: uiSettings.ghostHideConnectionLines,
     edges: edges,
   });
 
@@ -375,6 +376,11 @@ function AppContent() {
     edgeContextRef.current.alwaysShowEdgeLabels =
       uiSettings.alwaysShowEdgeLabels;
   }, [uiSettings.alwaysShowEdgeLabels]);
+
+  useEffect(() => {
+    edgeContextRef.current.hideGhostConnectionLines =
+      uiSettings.ghostHideConnectionLines;
+  }, [uiSettings.ghostHideConnectionLines]);
 
   useEffect(() => {
     edgeContextRef.current.hoveredEdgeId = hoveredEdgeId;
@@ -2193,6 +2199,7 @@ function AppContent() {
     layeredNodes,
     currentLayer,
     getLiftGhostsForLayer,
+    hideGhostConnectionLines: uiSettings.ghostHideConnectionLines,
   });
 
   // Get max layer for layer panel

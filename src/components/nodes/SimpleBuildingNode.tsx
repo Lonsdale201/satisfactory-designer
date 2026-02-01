@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import { Handle, Position } from "@xyflow/react";
-import { Building, Item } from "../../types";
+import type { CSSProperties } from "react";
+import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
+import type { Building, BuildingNodeData, Item } from "../../types";
 import buildingsData from "../../data/buildings.json";
 import itemsData from "../../data/items.json";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
@@ -17,6 +18,7 @@ import {
   CalcStatusPanel,
   InventoryPanel,
 } from "./BuildingPanels";
+import { getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const buildings: Building[] = (buildingsData as { buildings: Building[] })
   .buildings;
@@ -24,49 +26,7 @@ const items: Item[] = (itemsData as { items: Item[] }).items;
 interface SimpleBuildingNodeProps {
   id: string;
   selected?: boolean;
-  data: {
-    buildingId: string;
-    production: number;
-    outputItem: string;
-    powerUsage: number;
-    iconUrl?: string;
-    customLabel?: string;
-    storedItem?: string;
-    collapsed?: boolean;
-    hasInput?: boolean;
-    hasOutput?: boolean;
-    inputCount?: number;
-    layer?: number;
-    isGhost?: boolean;
-    calcStatus?: "optimal" | "under" | "over" | null;
-    calcSupply?: number;
-    calcDemand?: number;
-    calcMismatchIncoming?: boolean;
-    calcMismatchOutgoing?: boolean;
-    calcMismatchOutgoingCount?: number;
-    calcMismatchOutgoingTotal?: number;
-    calcDisconnected?: boolean;
-    calcTerminalInputOnly?: boolean;
-    calcInputDetails?: Array<{
-      itemId: string;
-      supply: number;
-      demand: number;
-    }>;
-    storageFlow?: {
-      inRate: number;
-      outRate: number;
-      netRate: number;
-      outDemand: number;
-      canFill: boolean;
-      fillMinutes: number | null;
-    };
-    showIo?: boolean;
-    theme?: string;
-    // Stack properties
-    stackCount?: number;
-    stackActiveIndex?: number;
-    stackActiveId?: string;
-  };
+  data: BuildingNodeData;
 }
 
 const SimpleBuildingNode = memo(
@@ -301,45 +261,38 @@ const SimpleBuildingNode = memo(
       if (defaultProduction) {
         updateProductionForRate(defaultProduction);
       }
-    }, [
-      displayData.outputItem,
-      id,
-      incomingItems,
-      isGhost,
-      selectedBuilding,
-    ]);
+    }, [displayData.outputItem, id, incomingItems, isGhost, selectedBuilding]);
 
     const ghostBorderColor = isDarkTheme ? "#94a3b8" : themeColors.border;
     const ghostTextColor = isDarkTheme ? "#e2e8f0" : `${themeColors.header}CC`;
     const ghostAccent = isDarkTheme ? "#94a3b8" : themeColors.header;
+    const handleRotation = (data.handleRotation as number | undefined) ?? 0;
+    const updateNodeInternals = useUpdateNodeInternals();
 
     const getHandleStyle = (type: "conveyor" | "pipe") => {
+      const baseStyle: CSSProperties = {
+        width: isGhost ? 8 : 14,
+        height: isGhost ? 8 : 14,
+        borderRadius: 999,
+      };
+
+      if (type === "pipe") {
+        const cssVars = baseStyle as CSSProperties &
+          Record<string, string | number>;
+        cssVars["--handle-bg"] = "#3b82f6";
+        cssVars["--handle-border"] = "#1d4ed8";
+      }
+
       if (isGhost) {
         return {
-          background:
-            type === "pipe"
-              ? "#3b82f6"
-              : isDarkTheme
-                ? "#94a3b8"
-                : themeColors.header,
-          width: 8,
-          height: 8,
+          ...baseStyle,
           border: "none",
-          borderRadius: 999,
-          outline:
-            type === "pipe"
-              ? "1px dashed rgba(59, 130, 246, 0.5)"
-              : `1px dashed ${isDarkTheme ? "#94a3b8" : themeColors.header}80`,
+          outline: "1px dashed var(--handle-bg)",
           outlineOffset: "2px",
-        } as const;
+        };
       }
-      return {
-        background: type === "pipe" ? "#3b82f6" : "#d1d5db",
-        width: 14,
-        height: 14,
-        border: type === "pipe" ? "1px solid #1d4ed8" : "1px solid #6b7280",
-        borderRadius: 999,
-      } as const;
+
+      return baseStyle;
     };
 
     // Get the item icon for ghost mode display
@@ -360,6 +313,10 @@ const SimpleBuildingNode = memo(
         }),
       [outputRows],
     );
+
+    useEffect(() => {
+      updateNodeInternals(id);
+    }, [handleRotation, inputCount, outputCount, updateNodeInternals, id]);
     const calcStatusTitle =
       displayData.calcStatus === "optimal"
         ? "Supply rate matches demand"
@@ -487,7 +444,11 @@ const SimpleBuildingNode = memo(
             style={{
               minWidth: isCollapsed ? 180 : 220,
               backgroundColor:
-                isGhost && isDarkTheme ? "rgba(148, 163, 184, 0.06)" : isGhost ? "transparent" : themeColors.body,
+                isGhost && isDarkTheme
+                  ? "rgba(148, 163, 184, 0.06)"
+                  : isGhost
+                    ? "transparent"
+                    : themeColors.body,
               border: isGhost
                 ? `2px dashed ${ghostBorderColor}80`
                 : `2px solid ${selected ? "#fff" : themeColors.border}`,
@@ -552,21 +513,55 @@ const SimpleBuildingNode = memo(
 
             {/* Input Handles */}
             {hasInput &&
-              inputTypes.map((type, index) => (
-                <Handle
-                  key={`input-${type}-${index}`}
-                  type="target"
-                  position={Position.Left}
-                  id={`in-${type}-${index}`}
-                  style={{
-                    ...getHandleStyle(type),
-                    top:
-                      inputCount === 1
-                        ? "50%"
-                        : `${25 + index * (50 / Math.max(inputCount - 1, 1))}%`,
-                  }}
-                />
-              ))}
+              inputTypes.map((type, index) => {
+                const baseY =
+                  inputCount === 1
+                    ? 50
+                    : 25 + index * (50 / Math.max(inputCount - 1, 1));
+                return (
+                  <Handle
+                    key={`input-${type}-${index}`}
+                    type="target"
+                    position={Position.Left}
+                    id={`in-${type}-${index}`}
+                    className={type === "pipe" ? "handle-pipe" : "handle-input"}
+                    style={{
+                      ...getHandleStyle(type),
+                      ...getRotatedHandleStyle(
+                        { x: 0, y: baseY },
+                        handleRotation,
+                      ),
+                    }}
+                  />
+                );
+              })}
+
+            {/* Output Handles */}
+            {hasOutput &&
+              outputTypes.map((type, index) => {
+                const baseY =
+                  outputCount === 1
+                    ? 50
+                    : 25 + index * (50 / Math.max(outputCount - 1, 1));
+                return (
+                  <Handle
+                    key={`output-${type}-${index}`}
+                    type="source"
+                    position={Position.Right}
+                    id={`out-${type}-${index}`}
+                    className={
+                      type === "pipe" ? "handle-pipe" : "handle-output"
+                    }
+                    style={{
+                      ...getHandleStyle(type),
+                      ...getRotatedHandleStyle(
+                        { x: 100, y: baseY },
+                        handleRotation,
+                      ),
+                    }}
+                  />
+                );
+              })}
             <BuildingHeader
               headerLabel={headerLabel}
               iconUrl={iconUrl}
@@ -615,8 +610,8 @@ const SimpleBuildingNode = memo(
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
-                color: ghostTextColor,
-                border: `1px dashed ${ghostAccent}80`,
+                      color: ghostTextColor,
+                      border: `1px dashed ${ghostAccent}80`,
                       borderRadius: 999,
                       padding: "2px 8px",
                       letterSpacing: "0.4px",
@@ -672,16 +667,16 @@ const SimpleBuildingNode = memo(
                     {!ui.hideRequiredItems &&
                       activeRequirements.length > 0 &&
                       selectedOutputItem && (
-                      <div style={{ marginBottom: 8 }}>
-                        <InputsPanel
-                          themeColors={themeColors}
-                          requiredInputs={requiredInputs}
-                          inputsExpanded={inputsExpanded}
-                          setInputsExpanded={setInputsExpanded}
-                          hideAllImages={ui.hideAllImages}
-                        />
-                      </div>
-                    )}
+                        <div style={{ marginBottom: 8 }}>
+                          <InputsPanel
+                            themeColors={themeColors}
+                            requiredInputs={requiredInputs}
+                            inputsExpanded={inputsExpanded}
+                            setInputsExpanded={setInputsExpanded}
+                            hideAllImages={ui.hideAllImages}
+                          />
+                        </div>
+                      )}
                     {showIoBlock &&
                       selectedOutputItem &&
                       outputRows.length > 0 && (
@@ -804,9 +799,9 @@ const SimpleBuildingNode = memo(
                       showDemandLine={!displayData.calcTerminalInputOnly}
                       surplusItemName={
                         displayData.calcStatus === "over"
-                          ? selectedOutputItem?.name ??
+                          ? (selectedOutputItem?.name ??
                             selectedStoredItem?.name ??
-                            undefined
+                            undefined)
                           : undefined
                       }
                     />
@@ -887,24 +882,6 @@ const SimpleBuildingNode = memo(
                 </div>
               </div>
             )}
-
-            {/* Output Handle */}
-            {hasOutput &&
-              outputTypes.map((type, index) => (
-                <Handle
-                  key={`output-${type}-${index}`}
-                  type="source"
-                  position={Position.Right}
-                  id={`out-${type}-${index}`}
-                  style={{
-                    ...getHandleStyle(type),
-                    top:
-                      outputCount === 1
-                        ? "50%"
-                        : `${25 + index * (50 / Math.max(outputCount - 1, 1))}%`,
-                  }}
-                />
-              ))}
           </div>
         </div>
       </>

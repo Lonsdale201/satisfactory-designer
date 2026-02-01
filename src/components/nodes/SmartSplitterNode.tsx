@@ -1,8 +1,10 @@
-import { memo, useMemo } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { memo, useEffect, useMemo } from 'react';
+import type { CSSProperties } from 'react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { Item, SplitterOutputConfig } from '../../types';
 import itemsData from '../../data/items.json';
 import { useUiSettings } from '../../contexts/UiSettingsContext';
+import { getRotatedHandleStyle } from '../../utils/handleRotation';
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob('../../assets/items/*', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
@@ -51,12 +53,14 @@ interface SmartSplitterNodeProps {
     incomingItems?: string[];
     autoAssignedOutputs?: [SplitterOutputConfig, SplitterOutputConfig, SplitterOutputConfig];
     theme?: string;
+    handleRotation?: number;
     isGhost?: boolean;
   };
 }
 
 const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) => {
   const ui = useUiSettings();
+  const updateNodeInternals = useUpdateNodeInternals();
   const isCollapsed = data.collapsed ?? false;
   const isCompact = data.compactMode ?? false;
   const isGhost = data.isGhost ?? false;
@@ -85,14 +89,18 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
   }, [data.autoAssignedOutputs, splitOutputs]);
 
   const iconUrl = findBuildingIconUrl('smart_splitter') || findBuildingIconUrl('smartsplitter');
+  const handleRotation = (data.handleRotation as number | undefined) ?? 0;
 
-  const handleStyle = {
-    background: '#d1d5db',
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [handleRotation, updateNodeInternals, id]);
+
+  const handleStyle: CSSProperties = {
     width: isGhost ? 8 : 14,
     height: isGhost ? 8 : 14,
-    border: isGhost ? 'none' : '1px solid #6b7280',
     borderRadius: 999,
-  } as const;
+    border: isGhost ? 'none' : undefined,
+  };
 
   const outputLabels = ['Top', 'Right', 'Bottom'];
   return (
@@ -113,9 +121,10 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
         type="target"
         position={Position.Left}
         id="in-conveyor-0"
+        className="handle-input"
         style={{
           ...handleStyle,
-          top: '50%',
+          ...getRotatedHandleStyle({ x: 0, y: 50 }, handleRotation),
         }}
       />
 
@@ -124,30 +133,48 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
         type="source"
         position={Position.Top}
         id="out-top-0"
+        className="handle-output"
         style={{
           ...handleStyle,
-          left: '50%',
-          background: autoAssignedOutputs[0].item ? '#8b5cf6' : '#d1d5db',
+          ...getRotatedHandleStyle({ x: 50, y: 0 }, handleRotation),
+          ...(autoAssignedOutputs[0].item
+            ? ({
+                ['--handle-bg' as any]: '#8b5cf6',
+                ['--handle-border' as any]: '#7c3aed',
+              } as CSSProperties)
+            : {}),
         }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="out-right-0"
+        className="handle-output"
         style={{
           ...handleStyle,
-          top: '50%',
-          background: autoAssignedOutputs[1].item ? '#8b5cf6' : '#d1d5db',
+          ...getRotatedHandleStyle({ x: 100, y: 50 }, handleRotation),
+          ...(autoAssignedOutputs[1].item
+            ? ({
+                ['--handle-bg' as any]: '#8b5cf6',
+                ['--handle-border' as any]: '#7c3aed',
+              } as CSSProperties)
+            : {}),
         }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="out-bottom-0"
+        className="handle-output"
         style={{
           ...handleStyle,
-          left: '50%',
-          background: autoAssignedOutputs[2].item ? '#8b5cf6' : '#d1d5db',
+          ...getRotatedHandleStyle({ x: 50, y: 100 }, handleRotation),
+          ...(autoAssignedOutputs[2].item
+            ? ({
+                ['--handle-bg' as any]: '#8b5cf6',
+                ['--handle-border' as any]: '#7c3aed',
+              } as CSSProperties)
+            : {}),
         }}
       />
 

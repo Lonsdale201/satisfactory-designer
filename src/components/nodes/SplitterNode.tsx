@@ -1,10 +1,12 @@
-import { memo } from "react";
-import { Handle, Position } from "@xyflow/react";
+import { memo, useEffect } from "react";
+import type { CSSProperties } from "react";
+import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
 import * as Icons from "@mui/icons-material";
 import itemsData from "../../data/items.json";
 import type { Item } from "../../types";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
 import { themeMap } from "../../constants/themeMap";
+import { getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -55,17 +57,24 @@ interface SplitterNodeProps {
     theme?: string;
     isGhost?: boolean;
     incomingItems?: string[];
+    handleRotation?: number;
   };
 }
 
-const SplitterNode = memo(({ data, selected }: SplitterNodeProps) => {
+const SplitterNode = memo(({ data, selected, id }: SplitterNodeProps) => {
   const ui = useUiSettings();
+  const updateNodeInternals = useUpdateNodeInternals();
   const isCollapsed = data.collapsed ?? false;
   const isGhost = data.isGhost ?? false;
   const headerLabel = (data.customLabel || "Splitter").toUpperCase();
   const themeKey = data.theme || "";
   const themeColors =
     themeMap[themeKey as keyof typeof themeMap] || themeMap.purple;
+  const handleRotation = (data.handleRotation as number | undefined) ?? 0;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [handleRotation, updateNodeInternals, id]);
 
   const incomingItemId = data.incomingItems?.[0];
   const incomingItem = incomingItemId
@@ -73,24 +82,25 @@ const SplitterNode = memo(({ data, selected }: SplitterNodeProps) => {
     : undefined;
   const iconUrl = findItemIconUrl(incomingItem);
 
-  const handleStyle = {
-    background: "#d1d5db",
+  const handleStyle: CSSProperties = {
     width: isGhost ? 8 : 14,
     height: isGhost ? 8 : 14,
-    border: isGhost ? "none" : "1px solid #6b7280",
     borderRadius: 999,
-  } as const;
+    border: isGhost ? "none" : undefined,
+  };
 
   return (
     <div
       style={{
         minWidth: isCollapsed ? 160 : 200,
-        backgroundColor: themeColors.body,
-        border: `2px solid ${selected ? "#fff" : themeColors.border}`,
+        backgroundColor: isGhost ? "transparent" : themeColors.body,
+        border: isGhost
+          ? `2px dashed ${themeColors.border}80`
+          : `2px solid ${selected ? "#fff" : themeColors.border}`,
         borderRadius: 8,
         fontFamily: "Inter, sans-serif",
         position: "relative",
-        opacity: isGhost ? 0.5 : 1,
+        opacity: isGhost ? 0.6 : 1,
         pointerEvents: isGhost ? "none" : "auto",
       }}
     >
@@ -98,9 +108,10 @@ const SplitterNode = memo(({ data, selected }: SplitterNodeProps) => {
         type="target"
         position={Position.Left}
         id="in-conveyor-0"
+        className="handle-input"
         style={{
           ...handleStyle,
-          top: "50%",
+          ...getRotatedHandleStyle({ x: 0, y: 50 }, handleRotation),
         }}
       />
 
@@ -108,27 +119,30 @@ const SplitterNode = memo(({ data, selected }: SplitterNodeProps) => {
         type="source"
         position={Position.Top}
         id="out-top-0"
+        className="handle-output"
         style={{
           ...handleStyle,
-          left: "50%",
+          ...getRotatedHandleStyle({ x: 50, y: 0 }, handleRotation),
         }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="out-right-0"
+        className="handle-output"
         style={{
           ...handleStyle,
-          top: "50%",
+          ...getRotatedHandleStyle({ x: 100, y: 50 }, handleRotation),
         }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="out-bottom-0"
+        className="handle-output"
         style={{
           ...handleStyle,
-          left: "50%",
+          ...getRotatedHandleStyle({ x: 50, y: 100 }, handleRotation),
         }}
       />
 

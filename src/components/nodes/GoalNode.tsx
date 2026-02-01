@@ -1,8 +1,9 @@
-import { memo, useMemo } from "react";
-import { Handle, Position } from "@xyflow/react";
+import { memo, useEffect, useMemo } from "react";
+import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
 import { Item } from "../../types";
 import itemsData from "../../data/items.json";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
+import { getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -51,16 +52,20 @@ interface GoalNodeProps {
     customLabel?: string;
     collapsed?: boolean;
     isGhost?: boolean;
+    handleRotation?: number;
   };
 }
 
-const GoalNode = memo(({ data }: GoalNodeProps) => {
+const GoalNode = memo(({ data, id }: GoalNodeProps) => {
   const ui = useUiSettings();
+  const updateNodeInternals = useUpdateNodeInternals();
+  const handleRotation = (data.handleRotation as number | undefined) ?? 0;
   const selectedItem = items.find((i) => i.id === data.itemId);
   const isCollapsed = data.collapsed ?? false;
   const isGhost = data.isGhost ?? false;
   const targetRate = data.targetRate || selectedItem?.defaultProduction || 1;
   const iconUrl = selectedItem ? findItemIconUrl(selectedItem) : "";
+
   const headerLabel = (
     data.customLabel ||
     selectedItem?.name ||
@@ -80,6 +85,10 @@ const GoalNode = memo(({ data }: GoalNodeProps) => {
   }, [selectedItem, targetRate]);
 
   const inputCount = requiredInputs.length || 1;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [handleRotation, inputCount, updateNodeInternals, id]);
 
   // Check if all required inputs are connected
   const connectedItems =
@@ -152,25 +161,28 @@ const GoalNode = memo(({ data }: GoalNodeProps) => {
         )}
 
         {/* Input Handles */}
-        {Array.from({ length: inputCount }).map((_, index) => (
-          <Handle
-            key={`input-${index}`}
-            type="target"
-            position={Position.Left}
-            id={`in-conveyor-${index}`}
-            style={{
-              background: "#d1d5db",
-              width: 14,
-              height: 14,
-              border: "2px solid #eab308",
-              borderRadius: 999,
-              top:
-                inputCount === 1
-                  ? "50%"
-                  : `${25 + index * (50 / Math.max(inputCount - 1, 1))}%`,
-            }}
-          />
-        ))}
+        {Array.from({ length: inputCount }).map((_, index) => {
+          const baseY =
+            inputCount === 1
+              ? 50
+              : 25 + index * (50 / Math.max(inputCount - 1, 1));
+          return (
+            <Handle
+              key={`input-${index}`}
+              type="target"
+              position={Position.Left}
+              id={`in-conveyor-${index}`}
+              className="handle-input"
+              style={{
+                width: 14,
+                height: 14,
+                border: "2px solid #eab308",
+                borderRadius: 999,
+                ...getRotatedHandleStyle({ x: 0, y: baseY }, handleRotation),
+              }}
+            />
+          );
+        })}
 
         {/* Header */}
         <div
@@ -422,12 +434,13 @@ const GoalNode = memo(({ data }: GoalNodeProps) => {
           type="source"
           position={Position.Right}
           id="out-conveyor-0"
+          className="handle-output"
           style={{
-            background: goalAchieved ? "#22c55e" : "#eab308",
             width: 14,
             height: 14,
             border: "2px solid #1a1a2e",
             borderRadius: 999,
+            ...getRotatedHandleStyle({ x: 100, y: 50 }, handleRotation),
           }}
         />
       </div>

@@ -1,10 +1,12 @@
-import { memo } from "react";
-import { Handle, Position } from "@xyflow/react";
+import { memo, useEffect } from "react";
+import type { CSSProperties } from "react";
+import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
 import * as Icons from "@mui/icons-material";
 import { CONVEYOR_RATES } from "../../constants";
 import itemsData from "../../data/items.json";
 import type { Item } from "../../types";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
+import { getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -44,12 +46,14 @@ interface ConveyorLiftNodeProps {
     layer?: number;
     targetLayer?: number;
     transportingItem?: string;
+    handleRotation?: number;
   };
 }
 
 const ConveyorLiftNode = memo(
-  ({ data, selected }: ConveyorLiftNodeProps) => {
+  ({ data, selected, id }: ConveyorLiftNodeProps) => {
     const ui = useUiSettings();
+    const updateNodeInternals = useUpdateNodeInternals();
     const isCollapsed = data.collapsed ?? false;
     const isGhost = data.isGhost ?? false;
     const isLiftGhost = data.isLiftGhost ?? false;
@@ -150,8 +154,8 @@ const ConveyorLiftNode = memo(
             }
           : {};
 
-    const getHandleStyle = (isInput: boolean) => {
-      const baseStyle = {
+    const getHandleStyle = (_isInput: boolean) => {
+      const baseStyle: CSSProperties = {
         width: isGhost ? 8 : 14,
         height: isGhost ? 8 : 14,
         borderRadius: 999,
@@ -160,31 +164,31 @@ const ConveyorLiftNode = memo(
       if (isGhost && !isLiftGhost) {
         return {
           ...baseStyle,
-          background: themeColors.header,
           border: "none",
-          outline: `1px dashed ${themeColors.header}80`,
+          outline: "1px dashed var(--handle-bg)",
           outlineOffset: "2px",
-        } as const;
+        };
       }
 
       if (isLiftGhost) {
         return {
           ...baseStyle,
-          background: isInput ? "#f59e0b" : "#22c55e",
-          border: `2px solid ${isInput ? "#d97706" : "#16a34a"}`,
-          boxShadow: `0 0 8px ${isInput ? "#f59e0b" : "#22c55e"}`,
-        } as const;
+          border: "2px solid var(--handle-border)",
+          boxShadow: "0 0 8px var(--handle-bg)",
+        };
       }
 
-      return {
-        ...baseStyle,
-        background: isInput ? "#f59e0b" : "#22c55e",
-        border: `1px solid ${isInput ? "#d97706" : "#16a34a"}`,
-      } as const;
+      return baseStyle;
     };
 
     const DirectionIcon =
       direction === "up" ? Icons.ArrowUpward : Icons.ArrowDownward;
+    const handleRotation =
+      (data.handleRotation as number | undefined) ?? 0;
+
+    useEffect(() => {
+      updateNodeInternals(id);
+    }, [handleRotation, updateNodeInternals, id]);
     return (
       <div
         style={{
@@ -206,9 +210,10 @@ const ConveyorLiftNode = memo(
           type="target"
           position={Position.Left}
           id="in-conveyor-0"
+          className="handle-input"
           style={{
             ...getHandleStyle(true),
-            top: "50%",
+            ...getRotatedHandleStyle({ x: 0, y: 50 }, handleRotation),
           }}
         />
 
@@ -217,9 +222,10 @@ const ConveyorLiftNode = memo(
           type="source"
           position={Position.Right}
           id="out-conveyor-0"
+          className="handle-output"
           style={{
             ...getHandleStyle(false),
-            top: "50%",
+            ...getRotatedHandleStyle({ x: 100, y: 50 }, handleRotation),
           }}
         />
 

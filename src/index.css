@@ -79,34 +79,47 @@ body {
   stroke-width: 2 !important;
 }
 
+/* Handle colors */
+:root {
+  --handle-input-color: #f59e0b;
+  --handle-input-border: #b45309;
+  --handle-output-color: #22c55e;
+  --handle-output-border: #15803d;
+  --handle-default-color: #d1d5db;
+  --handle-default-border: #6b7280;
+}
+
 /* Handle styling */
 .react-flow__handle {
   width: 14px;
   height: 14px;
   box-sizing: border-box;
+  background: var(--handle-bg, var(--handle-default-color));
+  border: 1px solid var(--handle-border, var(--handle-default-border));
   transform: translate(-50%, -50%);
   transform-origin: center;
+  pointer-events: all;
+}
+
+.handle-input {
+  --handle-bg: var(--handle-input-color);
+  --handle-border: var(--handle-input-border);
+}
+
+.handle-output {
+  --handle-bg: var(--handle-output-color);
+  --handle-border: var(--handle-output-border);
+}
+
+.handle-pipe {
+  --handle-bg: #3b82f6;
+  --handle-border: #1d4ed8;
 }
 
 .react-flow__handle-right {
   transform: translate(50%, -50%);
 }
 
-.react-flow__handle:hover {
-  transform: translate(-50%, -50%) !important;
-}
-
-.react-flow__handle-right:hover {
-  transform: translate(50%, -50%) !important;
-}
-
-.react-flow__handle-connecting {
-  transform: translate(-50%, -50%) !important;
-}
-
-.react-flow__handle-right.react-flow__handle-connecting {
-  transform: translate(50%, -50%) !important;
-}
 
 /* Node dragging - GPU acceleration */
 .react-flow__node {

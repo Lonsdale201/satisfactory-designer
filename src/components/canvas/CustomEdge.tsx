@@ -9,6 +9,8 @@ interface CustomEdgeProps extends EdgeProps {
     label?: string;
     material?: MaterialType;
     isGhost?: boolean;
+    isLiftGhost?: boolean;
+    hideGhostConnectionLines?: boolean;
   };
 }
 
@@ -16,6 +18,7 @@ interface CustomEdgeContext {
   alwaysShowEdgeLabels: boolean;
   hoveredEdgeId: string | null;
   isDragging: boolean;
+  hideGhostConnectionLines: boolean;
   edges: Array<{ id: string; source: string; target: string }>;
 }
 
@@ -76,11 +79,16 @@ export function createCustomEdge(contextRef: React.MutableRefObject<CustomEdgeCo
         : 'conveyor';
     const material = data?.material || inferredMaterial;
     const isGhost = data?.isGhost || false;
+    const isLiftGhost = data?.isLiftGhost || false;
 
     const colors = MATERIAL_COLORS[material];
     const baseStrokeColor = selected ? colors.selected : colors.primary;
     const strokeColor = isGhost ? colors.ghost : baseStrokeColor;
 
+    const hideGhostLines =
+      (data?.hideGhostConnectionLines || context.hideGhostConnectionLines) &&
+      isGhost &&
+      !isLiftGhost;
     const showLabel = Boolean(
       label &&
       !isGhost &&
@@ -89,17 +97,19 @@ export function createCustomEdge(contextRef: React.MutableRefObject<CustomEdgeCo
 
     return (
       <>
-        <BaseEdge
-          id={id}
-          path={edgePath}
-          style={{
-            stroke: strokeColor,
-            strokeWidth: isGhost ? 1.5 : (selected ? 3 : 2),
-            strokeDasharray: isGhost ? 'none' : '6 6',
-            opacity: isGhost ? 0.6 : 1,
-            animation: context.isDragging || isGhost ? 'none' : 'flow-dash 1.2s linear infinite',
-          }}
-        />
+        {!hideGhostLines && (
+          <BaseEdge
+            id={id}
+            path={edgePath}
+            style={{
+              stroke: strokeColor,
+              strokeWidth: isGhost ? 1.5 : (selected ? 3 : 2),
+              strokeDasharray: isGhost ? 'none' : '6 6',
+              opacity: isGhost ? 0.6 : 1,
+              animation: context.isDragging || isGhost ? 'none' : 'flow-dash 1.2s linear infinite',
+            }}
+          />
+        )}
         {showLabel && (
           <EdgeLabelRenderer>
             <div

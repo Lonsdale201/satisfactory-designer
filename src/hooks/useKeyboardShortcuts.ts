@@ -155,6 +155,44 @@ export function useKeyboardShortcuts({
     saveBeforeDelete,
   ]);
 
+  // Rotate handle positions (R)
+  useEffect(() => {
+    const handleRotate = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "r") return;
+
+      const target = event.target as HTMLElement | null;
+      const isEditing =
+        !!target?.closest("input, textarea, [contenteditable='true'], [role='textbox']");
+      if (isEditing) {
+        return;
+      }
+
+      const hasSelection = nodesRef.current.some((node) => node.selected);
+      if (!hasSelection) return;
+
+      event.preventDefault();
+
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (!node.selected) return node;
+          const current =
+            (node.data as Record<string, unknown>).handleRotation as number | undefined;
+          const nextRotation = ((current ?? 0) + 1) % 4;
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              handleRotation: nextRotation,
+            },
+          };
+        }),
+      );
+    };
+
+    window.addEventListener("keydown", handleRotate);
+    return () => window.removeEventListener("keydown", handleRotate);
+  }, [nodesRef, setNodes]);
+
   // Undo shortcut (Ctrl+Z / Cmd+Z)
   useEffect(() => {
     const handleUndoShortcut = (event: KeyboardEvent) => {

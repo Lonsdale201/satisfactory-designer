@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { memo, useCallback, useEffect, useState } from 'react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import {
   Box,
   Paper,
@@ -21,6 +21,7 @@ import * as Icons from '@mui/icons-material';
 import { Building, Item } from '../../types';
 import buildingsData from '../../data/buildings.json';
 import itemsData from '../../data/items.json';
+import { getRotatedHandleStyle } from '../../utils/handleRotation';
 
 const buildings: Building[] = buildingsData.buildings as Building[];
 const items: Item[] = itemsData.items;
@@ -38,6 +39,7 @@ interface BuildingNodeProps {
     hasInput?: boolean;
     hasOutput?: boolean;
     inputCount?: number;
+    handleRotation?: number;
   };
 }
 
@@ -51,6 +53,7 @@ const getIconComponent = (iconName: string): React.ComponentType<{ sx?: object }
 
 const BuildingNodeComponent = memo(({ data, id }: BuildingNodeProps) => {
   const [customMode, setCustomMode] = useState(data.customProduction || false);
+  const updateNodeInternals = useUpdateNodeInternals();
 
   const selectedBuilding = buildings.find(b => b.id === data.buildingId);
   const selectedOutputItem = items.find(i => i.id === data.outputItem);
@@ -58,6 +61,11 @@ const BuildingNodeComponent = memo(({ data, id }: BuildingNodeProps) => {
   const hasInput = data.hasInput ?? true;
   const hasOutput = data.hasOutput ?? true;
   const inputCount = data.inputCount ?? (selectedBuilding?.inputs || 1);
+  const handleRotation = (data.handleRotation as number | undefined) ?? 0;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [handleRotation, inputCount, updateNodeInternals, id]);
 
   const availableOutputs = selectedBuilding
     ? items.filter(item => selectedBuilding.outputs.includes(item.id))
@@ -125,21 +133,39 @@ const BuildingNodeComponent = memo(({ data, id }: BuildingNodeProps) => {
       }}
     >
       {/* Input Handles */}
-      {hasInput && Array.from({ length: inputCount }).map((_, index) => (
+      {hasInput && Array.from({ length: inputCount }).map((_, index) => {
+        const baseY =
+          inputCount === 1 ? 50 : 25 + (index * (50 / Math.max(inputCount - 1, 1)));
+        return (
+          <Handle
+            key={`input-${index}`}
+            type="target"
+            position={Position.Left}
+            id={`input-${index}`}
+            className="handle-input"
+            style={{
+              width: 12,
+              height: 12,
+              ...getRotatedHandleStyle({ x: 0, y: baseY }, handleRotation),
+            }}
+          />
+        );
+      })}
+
+      {/* Output Handle */}
+      {hasOutput && (
         <Handle
-          key={`input-${index}`}
-          type="target"
-          position={Position.Left}
-          id={`input-${index}`}
+          type="source"
+          position={Position.Right}
+          id="output-0"
+          className="handle-output"
           style={{
-            background: '#e74c3c',
             width: 12,
             height: 12,
-            border: '2px solid #1a1a2e',
-            top: inputCount === 1 ? '50%' : `${25 + (index * (50 / Math.max(inputCount - 1, 1)))}%`,
+            ...getRotatedHandleStyle({ x: 100, y: 50 }, handleRotation),
           }}
         />
-      ))}
+      )}
 
       {/* Header */}
       <Box
@@ -390,20 +416,6 @@ const BuildingNodeComponent = memo(({ data, id }: BuildingNodeProps) => {
         </Box>
       )}
 
-      {/* Output Handle */}
-      {hasOutput && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="output-0"
-          style={{
-            background: '#2ecc71',
-            width: 12,
-            height: 12,
-            border: '2px solid #1a1a2e',
-          }}
-        />
-      )}
     </Paper>
   );
 });

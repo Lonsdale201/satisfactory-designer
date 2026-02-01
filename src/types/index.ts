@@ -73,9 +73,34 @@ export interface BuildingNodeData {
   storedItemManual?: boolean;
   selectedRecipeIndex?: number;
   selectedAltIndex?: number | null;
+  collapsed?: boolean;
+  hasInput?: boolean;
+  hasOutput?: boolean;
+  inputCount?: number;
+  layer?: number;
+  isGhost?: boolean;
+  showIo?: boolean;
   conveyorMk?: 1 | 2 | 3;
   pipeMk?: 1 | 2 | 3;
   theme?: string;
+  handleRotation?: number;
+  calcStatus?: "optimal" | "under" | "over" | null;
+  calcSupply?: number;
+  calcDemand?: number;
+  calcMismatchIncoming?: boolean;
+  calcMismatchOutgoing?: boolean;
+  calcMismatchOutgoingCount?: number;
+  calcMismatchOutgoingTotal?: number;
+  calcDisconnected?: boolean;
+  calcTerminalInputOnly?: boolean;
+  storageFlow?: {
+    inRate: number;
+    outRate: number;
+    netRate: number;
+    outDemand: number;
+    canFill: boolean;
+    fillMinutes: number | null;
+  };
   calcInputDetails?: Array<{ itemId: string; supply: number; demand: number }>;
   // Stack properties
   stackId?: string;
@@ -116,6 +141,7 @@ export interface SmartSplitterNodeData {
   theme?: string;
   // Split configuration for each output (left=0, top=1, right=2)
   splitOutputs: [SplitterOutputConfig, SplitterOutputConfig, SplitterOutputConfig];
+  handleRotation?: number;
 }
 
 export interface SplitterNodeData {
@@ -126,6 +152,7 @@ export interface SplitterNodeData {
   theme?: string;
   incomingItems?: string[];
   isGhost?: boolean;
+  handleRotation?: number;
 }
 
 export interface ConveyorLiftNodeData {
@@ -140,6 +167,7 @@ export interface ConveyorLiftNodeData {
   targetLayer?: number;
   isLiftGhost?: boolean;
   transportingItem?: string;
+  handleRotation?: number;
 }
 
 // Custom node types

@@ -10,6 +10,7 @@ export interface UiSettings {
   hideIoStats: boolean;
   hideMinimap: boolean;
   hideRequiredItems: boolean;
+  ghostHideConnectionLines: boolean;
 }
 
 interface SettingsMenuProps {
@@ -168,6 +169,23 @@ const SettingsMenu = memo(
               />
             }
             label="Hide required items"
+          />
+        </MenuItem>
+        <MenuItem>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={uiSettings.ghostHideConnectionLines}
+                onChange={(e) =>
+                  setUiSettings((s) => ({
+                    ...s,
+                    ghostHideConnectionLines: e.target.checked,
+                  }))
+                }
+              />
+            }
+            label="Ghost mode: hide connection lines"
           />
         </MenuItem>
       </Menu>

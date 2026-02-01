@@ -107,11 +107,16 @@ export const useLayeredNodes = ({
                 } as Node["style"])
               : node.style;
           const ghostZIndex =
-            node.type === "group" ? -5 : (node.zIndex as number | undefined);
+            node.type === "group"
+              ? -5
+              : ((node.zIndex as number | undefined) ?? -2);
           return {
             ...node,
             zIndex: ghostZIndex,
-            style: ghostGroupStyle,
+            style: {
+              ...(ghostGroupStyle ?? {}),
+              zIndex: ghostZIndex,
+            },
             data: {
               ...node.data,
               isGhost: true,

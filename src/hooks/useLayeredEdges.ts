@@ -11,6 +11,7 @@ type UseLayeredEdgesArgs = {
   layeredNodes: Node[];
   currentLayer: number;
   getLiftGhostsForLayer: (layer: number) => LiftGhostInfo[];
+  hideGhostConnectionLines?: boolean;
 };
 
 export const useLayeredEdges = ({
@@ -18,6 +19,7 @@ export const useLayeredEdges = ({
   layeredNodes,
   currentLayer,
   getLiftGhostsForLayer,
+  hideGhostConnectionLines,
 }: UseLayeredEdgesArgs) =>
   useMemo(() => {
     const visibleNodeIds = new Set(layeredNodes.map((n) => n.id));
@@ -57,15 +59,21 @@ export const useLayeredEdges = ({
         // Check if edge connects to ghost nodes
         const sourceNode = layeredNodeById.get(displaySource);
         const targetNode = layeredNodeById.get(displayTarget);
-        const isGhostEdge =
-          (sourceNode?.data as Record<string, unknown>)?.isGhost ||
-          (targetNode?.data as Record<string, unknown>)?.isGhost;
+        const sourceData = sourceNode?.data as Record<string, unknown> | undefined;
+        const targetData = targetNode?.data as Record<string, unknown> | undefined;
+        const isGhostEdge = sourceData?.isGhost || targetData?.isGhost;
+        const isLiftGhostEdge = Boolean(sourceData?.isLiftGhost || targetData?.isLiftGhost);
         return {
           ...edge,
           source: displaySource,
           target: displayTarget,
-          data: { ...edge.data, isGhost: isGhostEdge },
+          data: {
+            ...edge.data,
+            isGhost: isGhostEdge,
+            isLiftGhost: isLiftGhostEdge,
+            hideGhostConnectionLines,
+          },
         };
       })
       .filter(Boolean) as Edge[];
-  }, [edges, layeredNodes, currentLayer, getLiftGhostsForLayer]);
+  }, [edges, layeredNodes, currentLayer, getLiftGhostsForLayer, hideGhostConnectionLines]);

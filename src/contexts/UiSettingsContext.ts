@@ -9,6 +9,7 @@ export type UiSettings = {
   hideIoStats: boolean;
   hideMinimap: boolean;
   hideRequiredItems: boolean;
+  ghostHideConnectionLines: boolean;
 };
 
 export const defaultUiSettings: UiSettings = {
@@ -20,6 +21,7 @@ export const defaultUiSettings: UiSettings = {
   hideIoStats: false,
   hideMinimap: false,
   hideRequiredItems: false,
+  ghostHideConnectionLines: false,
 };
 
 const UiSettingsContext = createContext<UiSettings>(defaultUiSettings);
