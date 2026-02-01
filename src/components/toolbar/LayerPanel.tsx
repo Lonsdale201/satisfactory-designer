@@ -78,7 +78,7 @@ export const LayerPanel = memo(function LayerPanel({
 
       {maxLayer > 1 && (
         <Typography sx={{ fontSize: 10, color: '#6b7280' }}>
-          (1-{maxLayer})
+          ({currentLayer}-{maxLayer})
         </Typography>
       )}
 

@@ -9,6 +9,7 @@ interface UseKeyboardShortcutsProps {
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   handleDuplicateNodes: (nodeIds: string[]) => void;
   saveBeforeDelete?: (nodeIds: string[]) => void;
+  saveSnapshot?: () => void;
   handleUndo?: () => boolean;
 }
 
@@ -25,10 +26,16 @@ export function useKeyboardShortcuts({
   setEdges,
   handleDuplicateNodes,
   saveBeforeDelete,
+  saveSnapshot,
   handleUndo,
 }: UseKeyboardShortcutsProps): UseKeyboardShortcutsReturn {
   const ctrlDownRef = useRef(false);
   const copyBufferRef = useRef<string[]>([]);
+  const saveSnapshotRef = useRef<(() => void) | undefined>(saveSnapshot);
+
+  useEffect(() => {
+    saveSnapshotRef.current = saveSnapshot;
+  }, [saveSnapshot]);
 
   // Ctrl/Cmd key tracking
   useEffect(() => {
@@ -138,6 +145,9 @@ export function useKeyboardShortcuts({
 
       // Delete edges
       if (selectedEdgeIds.length > 0) {
+        if (selectedNodeIds.length === 0) {
+          saveSnapshotRef.current?.();
+        }
         setEdges((eds) =>
           eds.filter((edge) => !selectedEdgeIds.includes(edge.id)),
         );
@@ -171,6 +181,7 @@ export function useKeyboardShortcuts({
       if (!hasSelection) return;
 
       event.preventDefault();
+      saveSnapshotRef.current?.();
 
       setNodes((nds) =>
         nds.map((node) => {

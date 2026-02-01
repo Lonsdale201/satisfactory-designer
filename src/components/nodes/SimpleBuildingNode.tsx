@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
+import { Handle, useUpdateNodeInternals } from "@xyflow/react";
 import type { Building, BuildingNodeData, Item } from "../../types";
 import buildingsData from "../../data/buildings.json";
 import itemsData from "../../data/items.json";

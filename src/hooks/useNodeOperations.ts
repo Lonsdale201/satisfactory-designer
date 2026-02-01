@@ -11,6 +11,8 @@ interface UseNodeOperationsProps {
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   setNodeIdCounter: React.Dispatch<React.SetStateAction<number>>;
+  saveAfterAdd?: (nodeIds: string[], edgeIds: string[]) => void;
+  setSelectedNodesForStack?: React.Dispatch<React.SetStateAction<Node[]>>;
 }
 
 interface UseNodeOperationsReturn {
@@ -130,6 +132,8 @@ export function useNodeOperations({
   setNodes,
   setEdges,
   setNodeIdCounter,
+  saveAfterAdd,
+  setSelectedNodesForStack,
 }: UseNodeOperationsProps): UseNodeOperationsReturn {
 
   const handleAddNode = useCallback(
@@ -170,8 +174,11 @@ export function useNodeOperations({
 
       setNodes((nds) => [...nds, newNode]);
       setNodeIdCounter((c) => c + 1);
+      if (saveAfterAdd) {
+        saveAfterAdd([id], []);
+      }
     },
-    [nodeIdCounter, setNodes, currentLayer, setNodeIdCounter]
+    [nodeIdCounter, setNodes, currentLayer, setNodeIdCounter, saveAfterAdd]
   );
 
   const handleDeleteNode = useCallback((nodeId: string) => {
@@ -214,8 +221,11 @@ export function useNodeOperations({
     setNodes((nds) => [...nds, newNode]);
     setEdges((eds) => [...eds, ...newEdges]);
     setNodeIdCounter((c) => c + 1);
+    if (saveAfterAdd) {
+      saveAfterAdd([newId], newEdges.map((edge) => edge.id));
+    }
     window.dispatchEvent(new CustomEvent("forceRecalculate"));
-  }, [nodeIdCounter, edges, setNodes, setEdges, nodesRef, setNodeIdCounter]);
+  }, [nodeIdCounter, edges, setNodes, setEdges, nodesRef, setNodeIdCounter, saveAfterAdd]);
 
   const handleDuplicateNodes = useCallback((nodeIds: string[]) => {
     if (nodeIds.length === 0) return;
@@ -223,6 +233,8 @@ export function useNodeOperations({
     let counter = nodeIdCounter;
     const createdNodes: Node[] = [];
     const createdEdges: Edge[] = [];
+    const idMap = new Map<string, string>();
+    const selectedSet = new Set(nodeIds);
 
     nodeIds.forEach((nodeId, index) => {
       const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
@@ -231,6 +243,7 @@ export function useNodeOperations({
       const newId = `${sourceNode.type}-${counter}`;
       counter += 1;
       const offset = 40 + (index * 10);
+      idMap.set(nodeId, newId);
 
       createdNodes.push({
         ...sourceNode,
@@ -239,34 +252,85 @@ export function useNodeOperations({
           x: sourceNode.position.x + offset,
           y: sourceNode.position.y + offset,
         },
-        selected: false,
+        selected: true,
+        dragging: true,
       });
 
-      const incomingEdges = edges.filter((edge) => edge.target === nodeId);
-      incomingEdges.forEach((edge, idx) => {
+    });
+
+    if (nodeIds.length > 1) {
+      const internalEdges = edges.filter(
+        (edge) => selectedSet.has(edge.source) && selectedSet.has(edge.target),
+      );
+      internalEdges.forEach((edge, idx) => {
+        const newSource = idMap.get(edge.source);
+        const newTarget = idMap.get(edge.target);
+        if (!newSource || !newTarget) return;
         createdEdges.push({
           ...edge,
-          id: `edge-${newId}-${idx}-${Date.now()}-${counter}`,
-          target: newId,
+          id: `edge-${newSource}-${newTarget}-${idx}-${Date.now()}`,
+          source: newSource,
+          target: newTarget,
           data: {
             ...(edge.data || {}),
+            virtualSourceId:
+              (edge.data as Record<string, unknown> | undefined)?.virtualSourceId ===
+              edge.source
+                ? newSource
+                : (edge.data as Record<string, unknown> | undefined)?.virtualSourceId,
             virtualTargetId:
               (edge.data as Record<string, unknown> | undefined)?.virtualTargetId ===
-              nodeId
-                ? newId
+              edge.target
+                ? newTarget
                 : (edge.data as Record<string, unknown> | undefined)?.virtualTargetId,
           },
         });
       });
-    });
+    } else {
+      const nodeId = nodeIds[0];
+      const newId = idMap.get(nodeId);
+      if (newId) {
+        const incomingEdges = edges.filter((edge) => edge.target === nodeId);
+        incomingEdges.forEach((edge, idx) => {
+          createdEdges.push({
+            ...edge,
+            id: `edge-${newId}-${idx}-${Date.now()}-${counter}`,
+            target: newId,
+            data: {
+              ...(edge.data || {}),
+              virtualTargetId:
+                (edge.data as Record<string, unknown> | undefined)?.virtualTargetId ===
+                nodeId
+                  ? newId
+                  : (edge.data as Record<string, unknown> | undefined)?.virtualTargetId,
+            },
+          });
+        });
+      }
+    }
 
     if (createdNodes.length > 0) {
-      setNodes((nds) => [...nds, ...createdNodes]);
+      setNodes((nds) => {
+        const selectedSet = new Set(nodeIds);
+        const cleared = nds.map((node) =>
+          selectedSet.has(node.id) ? { ...node, selected: false } : node,
+        );
+        return [...cleared, ...createdNodes];
+      });
+      if (setSelectedNodesForStack) {
+        setSelectedNodesForStack(createdNodes);
+      }
       setEdges((eds) => [...eds, ...createdEdges]);
       setNodeIdCounter(counter);
+      if (saveAfterAdd) {
+        saveAfterAdd(
+          createdNodes.map((node) => node.id),
+          createdEdges.map((edge) => edge.id),
+        );
+      }
       window.dispatchEvent(new CustomEvent("forceRecalculate"));
     }
-  }, [nodeIdCounter, edges, setNodes, setEdges, nodesRef, setNodeIdCounter]);
+  }, [nodeIdCounter, edges, setNodes, setEdges, nodesRef, setNodeIdCounter, saveAfterAdd]);
 
   return {
     handleAddNode,

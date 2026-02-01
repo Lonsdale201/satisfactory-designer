@@ -4,10 +4,9 @@
 
 ### Added
 
-- New setting: hide required item indicators
 - New node: Splitter
-- Added new alternative recipes for Stator and Modular Frame
-- New setting: ghost mode connection lines can be hidden
+- New settings: hide required item indicators; ghost mode connection lines can be hidden
+- Added alternative recipes for Stator and Modular Frame
 
 ### Fixed
 
@@ -16,6 +15,8 @@
 - Lift reacts to item changes on connected nodes (including disconnects)
 - Minimap wrapper no longer blocks canvas dragging
 - Fixed ghost splitter overlay bleed-through
+- Improved Ctrl+Z undo handling and extended it to more node operations
+- Bulk multi-select duplication now preserves internal links while not connecting to the original selection
 
 ### Changed
 
@@ -28,7 +29,7 @@
 - Ghost mode connection design clarified for floor separation
 - Overproduction text is clearer and easier to understand
 - Input/output handle colors aligned with in-game visuals
-- Handles can be rotated together with R (90° steps, returns to original on the 4th step)
+- Handles can be rotated together with R (90 degree steps, returns to original on the 4th step)
 
 ## [0.2.3] - 2026-01-31
 

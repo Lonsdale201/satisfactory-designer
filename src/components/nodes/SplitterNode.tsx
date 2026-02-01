@@ -1,6 +1,6 @@
 import { memo, useEffect } from "react";
 import type { CSSProperties } from "react";
-import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
+import { Handle, useUpdateNodeInternals } from "@xyflow/react";
 import * as Icons from "@mui/icons-material";
 import itemsData from "../../data/items.json";
 import type { Item } from "../../types";

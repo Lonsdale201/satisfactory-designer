@@ -1,11 +1,25 @@
 import { useCallback, useRef } from "react";
 import { Node, Edge } from "@xyflow/react";
 
-interface DeletedNodeEntry {
-  nodes: Node[];
-  connectedEdges: Edge[];
-  timestamp: number;
-}
+type UndoEntry =
+  | {
+      type: "delete";
+      nodes: Node[];
+      connectedEdges: Edge[];
+      timestamp: number;
+    }
+  | {
+      type: "snapshot";
+      nodes: Node[];
+      connectedEdges: Edge[];
+      timestamp: number;
+    }
+  | {
+      type: "add";
+      nodeIds: string[];
+      edgeIds: string[];
+      timestamp: number;
+    };
 
 interface UseUndoStackProps {
   nodesRef: React.MutableRefObject<Node[]>;
@@ -16,6 +30,8 @@ interface UseUndoStackProps {
 
 interface UseUndoStackReturn {
   saveBeforeDelete: (nodeIds: string[]) => void;
+  saveAfterAdd: (nodeIds: string[], edgeIds: string[]) => void;
+  saveSnapshot: () => void;
   handleUndo: () => boolean;
   canUndo: () => boolean;
 }
@@ -28,7 +44,7 @@ export function useUndoStack({
   setNodes,
   setEdges,
 }: UseUndoStackProps): UseUndoStackReturn {
-  const undoStackRef = useRef<DeletedNodeEntry[]>([]);
+  const undoStackRef = useRef<UndoEntry[]>([]);
 
   // Save nodes and their connected edges before deletion
   const saveBeforeDelete = useCallback(
@@ -46,7 +62,8 @@ export function useUndoStack({
         (edge) => nodeIdSet.has(edge.source) || nodeIdSet.has(edge.target),
       );
 
-      const entry: DeletedNodeEntry = {
+      const entry: UndoEntry = {
+        type: "delete",
         nodes: nodesToSave.map((node) => ({ ...node })), // Deep copy
         connectedEdges: connectedEdges.map((edge) => ({ ...edge })), // Deep copy
         timestamp: Date.now(),
@@ -62,27 +79,78 @@ export function useUndoStack({
     [nodesRef, edgesRef],
   );
 
+  const saveAfterAdd = useCallback((nodeIds: string[], edgeIds: string[]) => {
+    if (nodeIds.length === 0 && edgeIds.length === 0) return;
+    undoStackRef.current.push({
+      type: "add",
+      nodeIds: [...nodeIds],
+      edgeIds: [...edgeIds],
+      timestamp: Date.now(),
+    });
+
+    if (undoStackRef.current.length > MAX_UNDO_STACK_SIZE) {
+      undoStackRef.current.shift();
+    }
+  }, []);
+
+  const saveSnapshot = useCallback(() => {
+    const nodes = nodesRef.current.map((node) => ({ ...node }));
+    const edges = edgesRef.current.map((edge) => ({ ...edge }));
+    undoStackRef.current.push({
+      type: "snapshot",
+      nodes,
+      connectedEdges: edges,
+      timestamp: Date.now(),
+    });
+
+    if (undoStackRef.current.length > MAX_UNDO_STACK_SIZE) {
+      undoStackRef.current.shift();
+    }
+  }, [nodesRef, edgesRef]);
+
   // Restore the last deleted nodes
   const handleUndo = useCallback((): boolean => {
     const lastEntry = undoStackRef.current.pop();
     if (!lastEntry) return false;
 
-    // Restore nodes
-    setNodes((nds) => {
-      // Avoid duplicates
-      const existingIds = new Set(nds.map((n) => n.id));
-      const newNodes = lastEntry.nodes.filter((n) => !existingIds.has(n.id));
-      return [...nds, ...newNodes];
-    });
+    if (lastEntry.type === "delete") {
+      // Restore nodes
+      setNodes((nds) => {
+        // Avoid duplicates
+        const existingIds = new Set(nds.map((n) => n.id));
+        const newNodes = lastEntry.nodes.filter((n) => !existingIds.has(n.id));
+        return [...nds, ...newNodes];
+      });
 
-    // Restore edges (only those that don't already exist)
-    setEdges((eds) => {
-      const existingIds = new Set(eds.map((e) => e.id));
-      const newEdges = lastEntry.connectedEdges.filter(
-        (e) => !existingIds.has(e.id),
-      );
-      return [...eds, ...newEdges];
-    });
+      // Restore edges (only those that don't already exist)
+      setEdges((eds) => {
+        const existingIds = new Set(eds.map((e) => e.id));
+        const newEdges = lastEntry.connectedEdges.filter(
+          (e) => !existingIds.has(e.id),
+        );
+        return [...eds, ...newEdges];
+      });
+      return true;
+    }
+
+    if (lastEntry.type === "snapshot") {
+      setNodes(lastEntry.nodes);
+      setEdges(lastEntry.connectedEdges);
+      return true;
+    }
+
+    // Undo added nodes/edges
+    const removeNodeIds = new Set(lastEntry.nodeIds);
+    const removeEdgeIds = new Set(lastEntry.edgeIds);
+    setNodes((nds) => nds.filter((n) => !removeNodeIds.has(n.id)));
+    setEdges((eds) =>
+      eds.filter(
+        (e) =>
+          !removeEdgeIds.has(e.id) &&
+          !removeNodeIds.has(e.source) &&
+          !removeNodeIds.has(e.target),
+      ),
+    );
 
     return true;
   }, [setNodes, setEdges]);
@@ -93,6 +161,8 @@ export function useUndoStack({
 
   return {
     saveBeforeDelete,
+    saveAfterAdd,
+    saveSnapshot,
     handleUndo,
     canUndo,
   };

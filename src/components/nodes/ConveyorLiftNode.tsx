@@ -1,6 +1,6 @@
 import { memo, useEffect } from "react";
 import type { CSSProperties } from "react";
-import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
+import { Handle, useUpdateNodeInternals } from "@xyflow/react";
 import * as Icons from "@mui/icons-material";
 import { CONVEYOR_RATES } from "../../constants";
 import itemsData from "../../data/items.json";

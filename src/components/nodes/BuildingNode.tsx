@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useState } from 'react';
-import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, useUpdateNodeInternals } from '@xyflow/react';
 import {
   Box,
   Paper,

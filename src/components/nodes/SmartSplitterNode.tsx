@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo } from 'react';
 import type { CSSProperties } from 'react';
-import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
+import { Handle, useUpdateNodeInternals } from '@xyflow/react';
 import { Item, SplitterOutputConfig } from '../../types';
 import itemsData from '../../data/items.json';
 import { useUiSettings } from '../../contexts/UiSettingsContext';

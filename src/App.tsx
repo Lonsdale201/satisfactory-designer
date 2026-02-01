@@ -19,9 +19,11 @@ import {
   useEdgesState,
   useReactFlow,
   addEdge,
+  applyEdgeChanges,
   Connection,
   Node,
   Edge,
+  EdgeChange,
   ConnectionMode,
   NodeTypes,
   EdgeTypes,
@@ -108,7 +110,7 @@ interface FlowCanvasProps {
   defaultEdgeOptions: { type: "custom" };
   connectionLineComponent: React.ComponentType<ConnectionLineComponentProps>;
   onNodesChange: ReturnType<typeof useNodesState>[2];
-  onEdgesChange: ReturnType<typeof useEdgesState>[2];
+  onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (params: Connection) => void;
   onNodeClick: (event: unknown, node: Node) => void;
   onPaneClick: () => void;
@@ -224,7 +226,7 @@ const initialEdges: Edge[] = [];
 function AppContent() {
   const reactFlowInstance = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, setEdges] = useEdgesState(initialEdges);
   const [nodeIdCounter, setNodeIdCounter] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -296,6 +298,7 @@ function AppContent() {
   }, [handleCalculate, calcEnabledRef]);
 
   const {
+    selectedNodesForStack,
     setSelectedNodesForStack,
     canStack,
     canUnstack,
@@ -308,6 +311,28 @@ function AppContent() {
     setEdges,
     getStackKey,
     onStackChange: handleStackChange,
+  });
+
+  useEffect(() => {
+    if (selectedNodesForStack.length === 0) return;
+    if (ignoreSelectionRef.current) return;
+    ignoreSelectionRef.current = true;
+    reactFlowInstance.setNodes((nds) =>
+      nds.map((node) => {
+        const shouldSelect = selectedNodesForStack.some(
+          (selected: Node) => selected.id === node.id,
+        );
+        return shouldSelect ? { ...node, selected: true } : node;
+      }),
+    );
+  }, [reactFlowInstance, selectedNodesForStack]);
+
+  // Undo stack for node deletions and adds
+  const { saveBeforeDelete, saveAfterAdd, saveSnapshot, handleUndo } = useUndoStack({
+    nodesRef,
+    edgesRef,
+    setNodes,
+    setEdges,
   });
 
   const {
@@ -323,14 +348,8 @@ function AppContent() {
     setNodes,
     setEdges,
     setNodeIdCounter,
-  });
-
-  // Undo stack for node deletions
-  const { saveBeforeDelete, handleUndo } = useUndoStack({
-    nodesRef,
-    edgesRef,
-    setNodes,
-    setEdges,
+    saveAfterAdd,
+    setSelectedNodesForStack,
   });
 
   const { ctrlDownRef } = useKeyboardShortcuts({
@@ -341,6 +360,7 @@ function AppContent() {
     setEdges,
     handleDuplicateNodes,
     saveBeforeDelete,
+    saveSnapshot,
     handleUndo,
   });
 
@@ -1146,6 +1166,7 @@ function AppContent() {
           itemId: edgeItemId,
         },
       );
+      saveSnapshot();
       setEdges((eds) => {
         const newEdges = addEdge(
           {
@@ -1176,7 +1197,20 @@ function AppContent() {
         return newEdges;
       });
     },
-    [setEdges, setNodes, getEdgeLabel, handleCalculate],
+    [setEdges, setNodes, getEdgeLabel, handleCalculate, saveSnapshot],
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const shouldSnapshot = changes.some(
+        (change) => change.type === "remove" || change.type === "add",
+      );
+      if (shouldSnapshot) {
+        saveSnapshot();
+      }
+      setEdges((eds) => applyEdgeChanges(changes, eds));
+    },
+    [setEdges, saveSnapshot],
   );
 
   // Handle node data changes from custom nodes AND update edge labels
