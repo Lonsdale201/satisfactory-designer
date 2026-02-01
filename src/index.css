@@ -33,6 +33,15 @@ body {
   border-radius: 8px !important;
 }
 
+.react-flow__panel.react-flow__minimap {
+  width: fit-content;
+  pointer-events: none;
+}
+
+.react-flow__panel.react-flow__minimap .react-flow__minimap {
+  pointer-events: auto;
+}
+
 .react-flow__minimap svg {
   background: transparent !important;
 }

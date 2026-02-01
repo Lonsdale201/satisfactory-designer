@@ -12,6 +12,7 @@
 - Storage manual item selection no longer gets stuck
 - Storage now reacts when the connected building's item changes
 - Lift reacts to item changes on connected nodes (including disconnects)
+- Minimap wrapper no longer blocks canvas dragging
 
 ### Changed
 
