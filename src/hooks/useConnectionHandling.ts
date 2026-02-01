@@ -68,6 +68,7 @@ function inferType(
 
 
   if (
+    node.type === "splitter" ||
     node.type === "smartSplitter" ||
     node.type === "goal" ||
     node.type === "conveyorLift"
@@ -113,36 +114,6 @@ function resolveDefaultType(
   return null;
 }
 
-/**
- * Get incoming item from source node
- */
-function getIncomingItem(
-  sourceNode: Node | undefined,
-  sourceHandle: string | null | undefined,
-): string | undefined {
-  if (!sourceNode) return undefined;
-  const sourceData = sourceNode.data as Record<string, unknown>;
-
-  if (sourceNode.type === "building") {
-    return sourceData.outputItem as string | undefined;
-  }
-  if (sourceNode.type === "conveyorLift") {
-    return sourceData.transportingItem as string | undefined;
-  }
-  if (sourceNode.type === "smartSplitter") {
-    const outputs = sourceData.splitOutputs as
-      | Array<{ item: string | null }>
-      | undefined;
-    if (!outputs) return undefined;
-    if (sourceHandle === "out-top-0") return outputs[0]?.item ?? undefined;
-    if (sourceHandle === "out-right-0") return outputs[1]?.item ?? undefined;
-    if (sourceHandle === "out-bottom-0") return outputs[2]?.item ?? undefined;
-    return undefined;
-  }
-
-  return undefined;
-}
-
 export function useConnectionHandling({
   nodesRef,
   edgesRef,
@@ -151,6 +122,53 @@ export function useConnectionHandling({
   calcEnabledRef,
   handleCalculate,
 }: UseConnectionHandlingProps): UseConnectionHandlingReturn {
+  /**
+   * Get incoming item from source node
+   */
+  const getIncomingItem = (
+    sourceNode: Node | undefined,
+    sourceHandle: string | null | undefined,
+  ): string | undefined => {
+    if (!sourceNode) return undefined;
+    const sourceData = sourceNode.data as Record<string, unknown>;
+
+    if (sourceNode.type === "building") {
+      return sourceData.outputItem as string | undefined;
+    }
+    if (sourceNode.type === "conveyorLift") {
+      return sourceData.transportingItem as string | undefined;
+    }
+    if (sourceNode.type === "smartSplitter") {
+      const outputs = sourceData.splitOutputs as
+        | Array<{ item: string | null }>
+        | undefined;
+      if (!outputs) return undefined;
+      if (sourceHandle === "out-top-0") return outputs[0]?.item ?? undefined;
+      if (sourceHandle === "out-right-0") return outputs[1]?.item ?? undefined;
+      if (sourceHandle === "out-bottom-0") return outputs[2]?.item ?? undefined;
+      return undefined;
+    }
+    if (sourceNode.type === "splitter") {
+      const incomingEdges = edgesRef.current.filter(
+        (edge) => edge.target === sourceNode.id,
+      );
+      const incomingItems = new Set<string>();
+      incomingEdges.forEach((edge) => {
+        const sourceId =
+          (edge.data as Record<string, unknown> | undefined)?.virtualSourceId ??
+          edge.source;
+        const source = nodesRef.current.find((n) => n.id === sourceId);
+        const item = getIncomingItem(source, edge.sourceHandle);
+        if (item) incomingItems.add(item);
+      });
+      if (incomingItems.size === 1) {
+        return Array.from(incomingItems)[0];
+      }
+      return undefined;
+    }
+
+    return undefined;
+  };
   const onConnect = useCallback(
     (params: Connection) => {
       // Use resolved IDs for the actual connection
@@ -204,6 +222,19 @@ export function useConnectionHandling({
       )
         return;
 
+      if (sourceNode?.type === "splitter" && params.sourceHandle) {
+        const handleInUse = edgesRef.current.some((edge) => {
+          const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+            ?.virtualSourceId as string | undefined;
+          const edgeSourceId = virtualSourceId || edge.source;
+          return (
+            edgeSourceId === resolvedParams.source &&
+            edge.sourceHandle === params.sourceHandle
+          );
+        });
+        if (handleInUse) return;
+      }
+
       // Auto-set production building output based on incoming item
       let applyToAllStackMembers = false;
       if (targetNode?.type === "building") {
@@ -222,15 +253,16 @@ export function useConnectionHandling({
             const matchedItem = matchingItems[0];
             const defaultProduction = matchedItem.defaultProduction || 30;
 
-            applyToAllStackMembers =
+            applyToAllStackMembers = Boolean(
               isStackParent &&
-              stackedNodeIds &&
-              stackedNodeIds.every((id) => {
-                const node = nodesRef.current.find((n) => n.id === id);
-                const outputItem = (node?.data as Record<string, unknown>)
-                  ?.outputItem as string | undefined;
-                return !outputItem || outputItem === matchedItem.id;
-              });
+                stackedNodeIds &&
+                stackedNodeIds.every((id) => {
+                  const node = nodesRef.current.find((n) => n.id === id);
+                  const outputItem = (node?.data as Record<string, unknown>)
+                    ?.outputItem as string | undefined;
+                  return !outputItem || outputItem === matchedItem.id;
+                }),
+            );
 
             const targetIds = applyToAllStackMembers
               ? stackedNodeIds || [resolvedParams.target as string]
@@ -263,13 +295,20 @@ export function useConnectionHandling({
         if (targetBuilding?.category === "storage") {
           const storedItem = targetData.storedItem as string | undefined;
           const incomingItem = getIncomingItem(sourceNode, params.sourceHandle);
+          if (incomingItem && storedItem && storedItem !== incomingItem) {
+            return;
+          }
           if (incomingItem && !storedItem) {
             setNodes((nds) =>
               nds.map((n) => {
                 if (n.id === resolvedParams.target) {
                   return {
                     ...n,
-                    data: { ...n.data, storedItem: incomingItem },
+                    data: {
+                      ...n.data,
+                      storedItem: incomingItem,
+                      storedItemManual: false,
+                    },
                   };
                 }
                 return n;
@@ -286,7 +325,7 @@ export function useConnectionHandling({
           | string
           | undefined;
         const incomingItem = getIncomingItem(sourceNode, params.sourceHandle);
-        if (incomingItem && !transportingItem) {
+        if (incomingItem && transportingItem !== incomingItem) {
           setNodes((nds) =>
             nds.map((n) => {
               if (n.id === resolvedParams.target) {
@@ -303,7 +342,6 @@ export function useConnectionHandling({
 
       const label = getEdgeLabel(
         resolvedParams.source || "",
-        resolvedParams.target,
         nodesRef.current,
         params.sourceHandle || null,
       );

@@ -7,7 +7,6 @@ import { CONVEYOR_RATES, PIPE_RATES } from "../constants";
  */
 export function getEdgeLabel(
   sourceNodeId: string,
-  targetNodeId: string | null | undefined,
   nodeList: Node[],
   sourceHandle?: string | null,
 ): string {
@@ -27,10 +26,6 @@ export function getEdgeLabel(
     nodeList.find((n) => n.id === sourceNodeId),
   );
   if (!sourceNode) return "";
-  const targetNode = targetNodeId
-    ? resolveStackNode(nodeList.find((n) => n.id === targetNodeId))
-    : undefined;
-
   const data = sourceNode.data as Record<string, unknown>;
   const isPipe = sourceHandle?.includes("pipe") || false;
   const conveyorMk = (data.conveyorMk as number) || 1;

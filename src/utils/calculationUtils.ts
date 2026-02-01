@@ -1,7 +1,7 @@
 import { Node, Edge } from "@xyflow/react";
 import { CONVEYOR_RATES, PIPE_RATES, ConveyorMk, PipeMk } from "../constants/rates";
 import { NodeStatusMap, CalcStatus, StorageFlow } from "../types/calculation";
-import { Item, Building } from "../types";
+import { Item, Building, ItemRecipe, ItemRequirement } from "../types";
 
 interface CalculationContext {
   nodes: Node[];
@@ -13,7 +13,7 @@ interface CalculationContext {
 function resolveRecipeForData(
   item: Item | undefined,
   data: Record<string, unknown>,
-): { recipe: Item["recipes"][number]; recipeIndex: number } | null {
+): { recipe: ItemRecipe; recipeIndex: number } | null {
   if (!item?.recipes || item.recipes.length === 0) return null;
   const buildingId = (data.buildingId as string | undefined) || "";
   const entries = item.recipes.map((recipe, index) => ({ recipe, index }));
@@ -42,11 +42,11 @@ export function buildAdjacencyLists(edges: Edge[]) {
 
   edges.forEach((edge) => {
     const sourceId =
-      (edge.data as Record<string, unknown> | undefined)?.virtualSourceId ??
-      edge.source;
+      ((edge.data as Record<string, unknown> | undefined)
+        ?.virtualSourceId as string | undefined) ?? edge.source;
     const targetId =
-      (edge.data as Record<string, unknown> | undefined)?.virtualTargetId ??
-      edge.target;
+      ((edge.data as Record<string, unknown> | undefined)
+        ?.virtualTargetId as string | undefined) ?? edge.target;
     if (!outgoingEdges[sourceId]) outgoingEdges[sourceId] = [];
     if (!incomingEdges[targetId]) incomingEdges[targetId] = [];
     outgoingEdges[sourceId].push(edge);
@@ -99,7 +99,7 @@ export function getDemandRate(
       return (
         sum +
         resolvedRecipe.recipe.inputs.reduce(
-          (reqSum, req) => reqSum + req.amount * scale,
+          (reqSum: number, req: ItemRequirement) => reqSum + req.amount * scale,
           0,
         )
       );
@@ -118,7 +118,10 @@ export function getDemandRate(
         const scale = production / baseOutput;
         return (
           sum +
-          altReqs.reduce((reqSum, req) => reqSum + req.amount * scale, 0)
+          altReqs.reduce(
+            (reqSum: number, req: ItemRequirement) => reqSum + req.amount * scale,
+            0,
+          )
         );
       }
     }
@@ -131,8 +134,11 @@ export function getDemandRate(
       const scale = production / item.defaultProduction;
       return (
         sum +
-        item.requires.reduce((reqSum, req) => reqSum + req.amount * scale, 0)
-      );
+      item.requires.reduce(
+        (reqSum: number, req: ItemRequirement) => reqSum + req.amount * scale,
+        0,
+      )
+    );
     }
     return sum + production;
   }, 0);
@@ -243,18 +249,6 @@ function getRequiredItemIdsForNode(
     );
   });
   return required;
-}
-
-function getNodeOutputItemId(node: Node): string | undefined {
-  const data = node.data as Record<string, unknown>;
-  if (node.type === "building") {
-    return (data.outputItem as string | undefined) ||
-      (data.storedItem as string | undefined);
-  }
-  if (node.type === "conveyorLift") {
-    return data.transportingItem as string | undefined;
-  }
-  return undefined;
 }
 
 function getEdgeSourceId(edge: Edge): string {
@@ -790,78 +784,6 @@ function calculateStorageFlow(
   };
 }
 
-function getNodeOutputRate(
-  node: Node,
-  nodes: Node[],
-  edges: Edge[],
-  buildings: Building[],
-  itemById: Map<string, Item>,
-  outgoingEdges: Record<string, Edge[]>,
-  incomingEdges: Record<string, Edge[]>,
-  visited: Set<string>,
-): number {
-  if (visited.has(node.id)) return 0;
-  const data = node.data as Record<string, unknown>;
-
-  if (node.type === "building") {
-    const buildingId = (data.buildingId as string) || "";
-    const building = buildings.find((b) => b.id === buildingId);
-    const conveyorMk = (data.conveyorMk as number) || 1;
-    const pipeMk = (data.pipeMk as number) || 1;
-    if (building?.category === "storage") {
-      const flow = calculateStorageFlow(
-        node,
-        nodes,
-        edges,
-        buildings,
-        itemById,
-        outgoingEdges,
-        incomingEdges,
-        conveyorMk,
-        pipeMk,
-        new Set(visited),
-      );
-      return flow.outRate;
-    }
-
-    const stackNodes = getStackNodes(node, nodes);
-    const production = stackNodes.reduce((sum, stackNode) => {
-      const stackData = stackNode.data as Record<string, unknown>;
-      return sum + ((stackData.production as number) || 0);
-    }, 0);
-    const isPipe = building?.outputTypes?.[0] === "pipe";
-    const beltCapacity = isPipe
-      ? PIPE_RATES[pipeMk as PipeMk]
-      : CONVEYOR_RATES[conveyorMk as ConveyorMk];
-    return Math.min(production, beltCapacity);
-  }
-
-  const producers = traceBackToProducers(
-    node,
-    nodes,
-    edges,
-    incomingEdges,
-    outgoingEdges,
-    itemById,
-    new Set(visited),
-  );
-
-  let totalSupply = 0;
-  producers.forEach(({ node: producerNode, splitRatio }) => {
-    const producerData = producerNode.data as Record<string, unknown>;
-    const producerType = producerNode.type;
-    if (producerType !== "building") return;
-    const stackNodes = getStackNodes(producerNode, nodes);
-    const producerProduction = stackNodes.reduce((sum, stackNode) => {
-      const stackData = stackNode.data as Record<string, unknown>;
-      return sum + ((stackData.production as number) || 0);
-    }, 0);
-    totalSupply += producerProduction * splitRatio;
-  });
-
-  return totalSupply;
-}
-
 function getNodeOutputRateForItem(
   node: Node,
   itemId: string | undefined,
@@ -1239,19 +1161,6 @@ function calculateProductionBuildingStatus(
         }
       } else {
         // Normal production building
-        const stackNodes = getStackNodes(sourceNode, nodes);
-        const sourceProduction = stackNodes.reduce((sum, stackNode) => {
-          const stackData = stackNode.data as Record<string, unknown>;
-          return sum + ((stackData.production as number) || 0);
-        }, 0);
-
-        const sourceConveyorMk = (sourceData.conveyorMk as number) || 1;
-        const sourcePipeMk = (sourceData.pipeMk as number) || 1;
-        const isPipe = sourceBuilding?.outputTypes?.[0] === "pipe";
-        const beltCapacity = isPipe
-          ? PIPE_RATES[sourcePipeMk as PipeMk]
-          : CONVEYOR_RATES[sourceConveyorMk as ConveyorMk];
-
         const splitRatio = getOutgoingSplitRatio(
           sourceNode,
           edge,
@@ -1292,7 +1201,6 @@ function calculateProductionBuildingStatus(
       );
 
       producers.forEach(({ node: producerNode, splitRatio }) => {
-        const producerData = producerNode.data as Record<string, unknown>;
         const producerType = producerNode.type;
 
         if (producerType === "building") {

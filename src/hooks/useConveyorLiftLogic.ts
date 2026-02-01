@@ -4,7 +4,6 @@ import { Node, Edge } from '@xyflow/react';
 interface UseConveyorLiftLogicProps {
   nodes: Node[];
   edges: Edge[];
-  currentLayer: number;
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
 }
 
@@ -17,7 +16,6 @@ interface LiftGhostInfo {
 export function useConveyorLiftLogic({
   nodes,
   edges,
-  currentLayer,
   setNodes,
 }: UseConveyorLiftLogicProps) {
   // Find all lift nodes and determine their ghost layers

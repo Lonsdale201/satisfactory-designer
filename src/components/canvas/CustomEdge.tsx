@@ -3,6 +3,8 @@ import { BaseEdge, EdgeLabelRenderer, EdgeProps, getSmoothStepPath } from '@xyfl
 import { MATERIAL_COLORS, MaterialType } from '../../constants/colors';
 
 interface CustomEdgeProps extends EdgeProps {
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
   data?: {
     label?: string;
     material?: MaterialType;
@@ -93,7 +95,8 @@ export function createCustomEdge(contextRef: React.MutableRefObject<CustomEdgeCo
           style={{
             stroke: strokeColor,
             strokeWidth: isGhost ? 1.5 : (selected ? 3 : 2),
-            strokeDasharray: isGhost ? '4 8' : '6 6',
+            strokeDasharray: isGhost ? 'none' : '6 6',
+            opacity: isGhost ? 0.6 : 1,
             animation: context.isDragging || isGhost ? 'none' : 'flow-dash 1.2s linear infinite',
           }}
         />
@@ -191,7 +194,8 @@ export const SimpleCustomEdge = memo(function SimpleCustomEdge({
         style={{
           stroke: strokeColor,
           strokeWidth: isGhost ? 1.5 : (selected ? 3 : 2),
-          strokeDasharray: isGhost ? '4 8' : '6 6',
+          strokeDasharray: isGhost ? 'none' : '6 6',
+          opacity: isGhost ? 0.6 : 1,
           animation: isGhost ? 'none' : 'flow-dash 1.2s linear infinite',
         }}
       />

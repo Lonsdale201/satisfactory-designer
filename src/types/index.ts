@@ -70,6 +70,7 @@ export interface BuildingNodeData {
   iconUrl?: string;
   customLabel?: string;
   storedItem?: string;
+  storedItemManual?: boolean;
   selectedRecipeIndex?: number;
   selectedAltIndex?: number | null;
   conveyorMk?: 1 | 2 | 3;
@@ -117,6 +118,16 @@ export interface SmartSplitterNodeData {
   splitOutputs: [SplitterOutputConfig, SplitterOutputConfig, SplitterOutputConfig];
 }
 
+export interface SplitterNodeData {
+  [key: string]: unknown;
+  label: string;
+  customLabel?: string;
+  collapsed?: boolean;
+  theme?: string;
+  incomingItems?: string[];
+  isGhost?: boolean;
+}
+
 export interface ConveyorLiftNodeData {
   [key: string]: unknown;
   label: string;
@@ -135,8 +146,9 @@ export interface ConveyorLiftNodeData {
 export type BuildingNode = Node<BuildingNodeData, 'building'>;
 export type GroupNode = Node<GroupNodeData, 'group'>;
 export type SmartSplitterNode = Node<SmartSplitterNodeData, 'smartSplitter'>;
+export type SplitterNode = Node<SplitterNodeData, 'splitter'>;
 export type ConveyorLiftNode = Node<ConveyorLiftNodeData, 'conveyorLift'>;
-export type AppNode = BuildingNode | GroupNode | SmartSplitterNode | ConveyorLiftNode;
+export type AppNode = BuildingNode | GroupNode | SmartSplitterNode | SplitterNode | ConveyorLiftNode;
 
 // Edge type
 export type AppEdge = Edge;

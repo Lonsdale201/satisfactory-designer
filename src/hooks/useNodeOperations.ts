@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Node, Edge } from '@xyflow/react';
 
-export type NodeType = 'building' | 'group' | 'smartSplitter' | 'goal' | 'conveyorLift';
+export type NodeType = 'building' | 'group' | 'splitter' | 'smartSplitter' | 'goal' | 'conveyorLift';
 
 interface UseNodeOperationsProps {
   nodeIdCounter: number;
@@ -59,6 +59,16 @@ function createSmartSplitterNodeData(currentLayer: number) {
   };
 }
 
+function createSplitterNodeData(currentLayer: number, data?: Partial<Record<string, unknown>>) {
+  return {
+    label: (data?.label as string) || 'Splitter',
+    customLabel: '',
+    collapsed: false,
+    theme: (data?.theme as string) || 'purple',
+    layer: currentLayer,
+  };
+}
+
 function createGoalNodeData(currentLayer: number, data?: Partial<Record<string, unknown>>) {
   return {
     itemId: (data?.itemId as string) || 'smart_plating',
@@ -78,7 +88,7 @@ function createConveyorLiftNodeData(currentLayer: number, data?: Partial<Record<
     direction,
     customLabel: '',
     collapsed: false,
-    theme: (data?.theme as string) || 'cyan',
+    theme: (data?.theme as string) || 'indigo',
     layer: currentLayer,
     targetLayer: Math.max(1, targetLayer),
     transportingItem: '',
@@ -97,6 +107,7 @@ function createBuildingNodeData(currentLayer: number, data?: Partial<Record<stri
     iconUrl: (data?.iconUrl as string) || '',
     customLabel: '',
     storedItem: '',
+    storedItemManual: false,
     selectedRecipeIndex: 0,
     selectedAltIndex: null,
     conveyorMk: 1,
@@ -129,6 +140,9 @@ export function useNodeOperations({
       switch (type) {
         case 'group':
           nodeData = createGroupNodeData(currentLayer, data);
+          break;
+        case 'splitter':
+          nodeData = createSplitterNodeData(currentLayer, data);
           break;
         case 'smartSplitter':
           nodeData = createSmartSplitterNodeData(currentLayer);

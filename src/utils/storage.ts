@@ -1,4 +1,5 @@
 import { Node, Edge } from '@xyflow/react';
+import type { UiSettings } from '../contexts/UiSettingsContext';
 
 const STORAGE_KEY = 'satisplanner_state';
 const VERSION = 1;
@@ -9,6 +10,7 @@ export interface SavedState {
   edges: Edge[];
   nodeIdCounter: number;
   floorNames?: Record<string, string>;
+  uiSettings?: UiSettings;
   savedAt: string;
 }
 
@@ -19,7 +21,8 @@ export function saveToLocalStorage(
   nodes: Node[],
   edges: Edge[],
   nodeIdCounter: number,
-  floorNames?: Record<string, string>
+  floorNames?: Record<string, string>,
+  uiSettings?: UiSettings
 ): void {
   try {
     const state: SavedState = {
@@ -28,6 +31,7 @@ export function saveToLocalStorage(
       edges,
       nodeIdCounter,
       floorNames,
+      uiSettings,
       savedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -77,7 +81,8 @@ export function exportToFile(
   edges: Edge[],
   nodeIdCounter: number,
   floorNames?: Record<string, string>,
-  filename?: string
+  filename?: string,
+  uiSettings?: UiSettings
 ): void {
   const state: SavedState = {
     version: VERSION,
@@ -85,6 +90,7 @@ export function exportToFile(
     edges,
     nodeIdCounter,
     floorNames,
+    uiSettings,
     savedAt: new Date().toISOString(),
   };
 

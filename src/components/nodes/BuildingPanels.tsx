@@ -62,7 +62,9 @@ export const BuildingHeader = memo(
         gap: 8,
         borderRadius: isGhost ? "6px 6px 0 0" : isCollapsed ? 6 : "6px 6px 0 0",
         cursor: "pointer",
-        borderBottom: isGhost ? `1px dashed ${themeColors.border}4D` : "none",
+        borderBottom: isGhost
+          ? `1px dashed ${isDarkTheme ? "rgba(226, 232, 240, 0.45)" : `${themeColors.border}4D`}`
+          : "none",
       }}
     >
       {!isGhost && !hideAllImages && iconUrl && (
@@ -87,17 +89,21 @@ export const BuildingHeader = memo(
           }}
         />
       )}
-      <span
-        style={{
-          fontSize: isGhost ? 10 : 14,
-          fontWeight: 600,
-          color: isGhost ? `${themeColors.header}80` : themeColors.text,
-          flex: isGhost ? "none" : 1,
-          textAlign: isGhost ? "center" : "left",
-        }}
-      >
-        {headerLabel}
-      </span>
+        <span
+          style={{
+            fontSize: isGhost ? 10 : 14,
+            fontWeight: 600,
+            color: isGhost
+              ? isDarkTheme
+                ? "#e2e8f0"
+                : `${themeColors.header}80`
+              : themeColors.text,
+            flex: isGhost ? "none" : 1,
+            textAlign: isGhost ? "center" : "left",
+          }}
+        >
+          {headerLabel}
+        </span>
       {isStackParent && !isGhost && (
         <div
           data-no-panel="true"
@@ -216,6 +222,7 @@ export const ProducesPanel = memo(
     getAltLabel,
     onAltSelect,
     hideAllImages,
+    hideRequiredItems,
     outputItem,
     missingRequirements,
     items,
@@ -240,6 +247,7 @@ export const ProducesPanel = memo(
     getAltLabel: (requirements: ItemRequirement[]) => string;
     onAltSelect: (index: number) => void;
     hideAllImages: boolean;
+    hideRequiredItems: boolean;
     outputItem: Item | undefined;
     missingRequirements: string[];
     items: Item[];
@@ -471,7 +479,9 @@ export const ProducesPanel = memo(
           {outputItem ? outputItem.name : "Not selected"}
         </div>
       </div>
-      {requirementsMet === false && missingRequirements.length > 0 && (
+      {!hideRequiredItems &&
+        requirementsMet === false &&
+        missingRequirements.length > 0 && (
         <div
           style={{
             marginTop: 6,
@@ -962,14 +972,14 @@ export const CalcStatusPanel = memo(
         }}
       >
         {calcStatus === "optimal" ? (
-          <>OK Optimal</>
+          <>Optimal</>
         ) : calcStatus === "under" ? (
           <>
             <span style={{ fontSize: 14 }}>!</span>
             Inefficient
           </>
         ) : (
-          <>^ Overproduction</>
+          <>Overproduction</>
         )}
       </div>
       {showDemandLine && (
@@ -990,15 +1000,20 @@ export const CalcStatusPanel = memo(
             fontSize: 9,
             color: "#d4b06b",
             marginTop: 4,
+            maxWidth: 200,
+            marginLeft: "auto",
+            marginRight: "auto",
+            lineHeight: 1.3,
           }}
         >
-          More items arrive than it can process /min:{" "}
+          Extra output:{" "}
           <span style={{ fontWeight: 700, color: "#fbbf24" }}>
             {formatNum(Math.max(0, (calcSupply || 0) - (calcDemand || 0)))}
           </span>{" "}
           <span style={{ fontWeight: 700, color: "#fde68a" }}>
             {surplusItemName}
           </span>
+          /min
         </div>
       )}
       {showDemandLine &&

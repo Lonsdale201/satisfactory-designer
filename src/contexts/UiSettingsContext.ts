@@ -8,6 +8,7 @@ export type UiSettings = {
   hideAllImages: boolean;
   hideIoStats: boolean;
   hideMinimap: boolean;
+  hideRequiredItems: boolean;
 };
 
 export const defaultUiSettings: UiSettings = {
@@ -18,6 +19,7 @@ export const defaultUiSettings: UiSettings = {
   hideAllImages: false,
   hideIoStats: false,
   hideMinimap: false,
+  hideRequiredItems: false,
 };
 
 const UiSettingsContext = createContext<UiSettings>(defaultUiSettings);

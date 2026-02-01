@@ -48,6 +48,10 @@ interface SmartSplitterNodeProps {
     collapsed?: boolean;
     compactMode?: boolean;
     splitOutputs?: [SplitterOutputConfig, SplitterOutputConfig, SplitterOutputConfig];
+    incomingItems?: string[];
+    autoAssignedOutputs?: [SplitterOutputConfig, SplitterOutputConfig, SplitterOutputConfig];
+    theme?: string;
+    isGhost?: boolean;
   };
 }
 
@@ -55,9 +59,9 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
   const ui = useUiSettings();
   const isCollapsed = data.collapsed ?? false;
   const isCompact = data.compactMode ?? false;
-  const isGhost = (data as { isGhost?: boolean }).isGhost ?? false;
+  const isGhost = data.isGhost ?? false;
   const headerLabel = (data.customLabel || 'Smart Splitter').toUpperCase();
-  const theme = (data as { theme?: string }).theme || '';
+  const theme = data.theme || '';
   const themeMap = {
     purple: { header: '#8b5cf6', body: '#252836', border: '#8b5cf6', text: '#1a1a2e' },
     dark: { header: '#111827', body: '#0b0f1a', border: '#374151', text: '#e5e7eb' },
@@ -91,8 +95,6 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
   } as const;
 
   const outputLabels = ['Top', 'Right', 'Bottom'];
-  const outputPositions = [Position.Top, Position.Right, Position.Bottom];
-
   return (
     <div
       style={{

@@ -26,6 +26,7 @@ import {
   NodeTypes,
   EdgeTypes,
   ConnectionLineComponentProps,
+  IsValidConnection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
@@ -35,15 +36,10 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Typography,
 } from "@mui/material";
 
 // Node components
-import SimpleBuildingNode from "./components/nodes/SimpleBuildingNode";
-import SimpleGroupNode from "./components/nodes/SimpleGroupNode";
-import SmartSplitterNode from "./components/nodes/SmartSplitterNode";
-import GoalNode from "./components/nodes/GoalNode";
-import ConveyorLiftNode from "./components/nodes/ConveyorLiftNode";
+import { createEdgeTypes, nodeTypes } from "./constants/graphTypes";
 
 // Sidebar components
 import Sidebar from "./components/sidebar/Sidebar";
@@ -60,6 +56,9 @@ import {
   useStackingLogic,
   useKeyboardShortcuts,
   useConveyorLiftLogic,
+  useLayeredNodes,
+  useLayeredEdges,
+  useNodeSelectionSnapshot,
 } from "./hooks";
 import { useUndoStack } from "./hooks/useUndoStack";
 
@@ -68,7 +67,10 @@ import {
   createCustomConnectionLine,
 } from "./components/canvas";
 import { ZoomControls, LayerPanel } from "./components/toolbar";
-import { FloorManagerPanel, FloorSummary } from "./components/toolbar/FloorManagerPanel";
+import {
+  FloorManagerPanel,
+  FloorSummary,
+} from "./components/toolbar/FloorManagerPanel";
 import type { ItemRequirement } from "./types";
 const Header = lazy(() => import("./components/toolbar/Header"));
 
@@ -90,15 +92,7 @@ import {
   importFromFile,
   clearLocalStorage,
 } from "./utils/storage";
-
-// Define types OUTSIDE component - this is critical for performance
-const nodeTypes: NodeTypes = {
-  building: SimpleBuildingNode,
-  group: SimpleGroupNode,
-  smartSplitter: SmartSplitterNode,
-  goal: GoalNode,
-  conveyorLift: ConveyorLiftNode,
-};
+import { createConnectionRules } from "./utils/connectionRules";
 
 const getRecipeByproducts = (recipe: unknown): ItemRequirement[] => {
   if (!recipe || typeof recipe !== "object") return [];
@@ -126,6 +120,7 @@ interface FlowCanvasProps {
   onNodeDrag: (event: unknown, node: Node) => void;
   onNodeDragStart: (event: unknown, node: Node) => void;
   onNodeDragStop: (event: unknown, node: Node) => void;
+  isValidConnection: IsValidConnection<Edge>;
   isDragging: boolean;
   hideMinimap: boolean;
   nodesDraggable: boolean;
@@ -155,6 +150,7 @@ const FlowCanvas = memo(
     onNodeDrag,
     onNodeDragStart,
     onNodeDragStop,
+    isValidConnection,
     isDragging,
     hideMinimap,
     nodesDraggable,
@@ -178,6 +174,7 @@ const FlowCanvas = memo(
       onNodeDrag={onNodeDrag}
       onNodeDragStart={onNodeDragStart}
       onNodeDragStop={onNodeDragStop}
+      isValidConnection={isValidConnection}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       connectionMode={ConnectionMode.Loose}
@@ -255,6 +252,14 @@ function AppContent() {
   const ignoreSelectionRef = useRef(false);
   const selectedNodeIdRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
+  const buildNodeSnapshotRef = useRef<
+    (node: Node) => Pick<Node, "id" | "type" | "data">
+  >(() => ({
+    id: "",
+    type: "building",
+    data: {},
+  }));
+  const captureNodeSnapshotRef = useRef<(nodeId: string | null) => void>(() => {});
   const reactFlowRef = useRef(reactFlowInstance);
   const logicNodesRef = useRef(nodes);
   const incomingItemsByNodeRef = useRef<Map<string, string[]>>(new Map());
@@ -342,7 +347,6 @@ function AppContent() {
   const { getLiftGhostsForLayer, syncGhostPosition } = useConveyorLiftLogic({
     nodes,
     edges,
-    currentLayer,
     setNodes,
   });
 
@@ -407,28 +411,6 @@ function AppContent() {
     );
   }, [interactionLocked, setNodes]);
 
-  const buildNodeSnapshot = useCallback((node: Node) => {
-    const incomingItems = incomingItemsByNodeRef.current.get(node.id);
-    return {
-      id: node.id,
-      type: node.type,
-      data: incomingItems ? { ...node.data, incomingItems } : node.data,
-    };
-  }, []);
-
-  const captureNodeSnapshot = useCallback((nodeId: string | null) => {
-    if (!nodeId) {
-      setSelectedNodeSnapshot(null);
-      return;
-    }
-    const node = nodesRef.current.find((n) => n.id === nodeId);
-    if (!node) {
-      setSelectedNodeSnapshot(null);
-      return;
-    }
-    setSelectedNodeSnapshot(buildNodeSnapshot(node));
-  }, [buildNodeSnapshot]);
-
   // Auto-load from localStorage on startup
   useEffect(() => {
     const saved = loadFromLocalStorage();
@@ -444,6 +426,7 @@ function AppContent() {
       setEdges(filteredEdges);
       setNodeIdCounter(saved.nodeIdCounter);
       setFloorNames(saved.floorNames || {});
+      setUiSettings({ ...defaultUiSettings, ...(saved.uiSettings || {}) });
     }
     setIsInitialized(true);
   }, [setNodes, setEdges]);
@@ -453,11 +436,11 @@ function AppContent() {
     if (!isInitialized) return;
 
     const timer = setTimeout(() => {
-      saveToLocalStorage(nodes, edges, nodeIdCounter, floorNames);
+      saveToLocalStorage(nodes, edges, nodeIdCounter, floorNames, uiSettings);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [nodes, edges, nodeIdCounter, isInitialized, floorNames]);
+  }, [nodes, edges, nodeIdCounter, isInitialized, floorNames, uiSettings]);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -513,9 +496,9 @@ function AppContent() {
   };
 
   const handleExportAll = useCallback(() => {
-    exportToFile(nodes, edges, nodeIdCounter, floorNames);
+    exportToFile(nodes, edges, nodeIdCounter, floorNames, undefined, uiSettings);
     setExportDialogOpen(false);
-  }, [nodes, edges, nodeIdCounter, floorNames]);
+  }, [nodes, edges, nodeIdCounter, floorNames, uiSettings]);
 
   const handleExportCurrent = useCallback(() => {
     const filteredNodes = nodes.filter((node) => {
@@ -537,6 +520,7 @@ function AppContent() {
       nodeIdCounter,
       { [String(currentLayer)]: floorName },
       `satisplanner_${floorName.replace(/\s+/g, "_").toLowerCase()}.json`,
+      uiSettings,
     );
     setExportDialogOpen(false);
   }, [
@@ -545,7 +529,13 @@ function AppContent() {
     nodeIdCounter,
     currentLayer,
     getFloorName,
+    uiSettings,
   ]);
+
+  const isValidConnection = useMemo<IsValidConnection<Edge>>(
+    () => createConnectionRules({ edgesRef, nodesRef }),
+    [edgesRef, nodesRef],
+  );
 
   // Import handler
   const applyImportAll = useCallback(
@@ -569,15 +559,18 @@ function AppContent() {
   const applyImportCurrent = useCallback(() => {
     if (!pendingImport) return;
     const { nodes: importNodes, edges: importEdges, nodeIdCounter: importCounter, floorNames: importFloorNames } = pendingImport;
-    const remappedNodes = importNodes.map((node) => {
-      const data = node.data as Record<string, unknown>;
-      const updated = { ...node };
-      const nextData = { ...data, layer: currentLayer };
-      if (node.type === "conveyorLift") {
-        const direction = (data.direction as "up" | "down") || "up";
-        const targetLayer = direction === "up" ? currentLayer + 1 : currentLayer - 1;
-        nextData.layer = currentLayer;
-        nextData.targetLayer = Math.max(1, targetLayer);
+      const remappedNodes = importNodes.map((node) => {
+        const data = node.data as Record<string, unknown>;
+        const updated = { ...node };
+        const nextData: Record<string, unknown> & {
+          layer: number;
+          targetLayer?: number;
+        } = { ...data, layer: currentLayer };
+        if (node.type === "conveyorLift") {
+          const direction = (data.direction as "up" | "down") || "up";
+          const targetLayer = direction === "up" ? currentLayer + 1 : currentLayer - 1;
+          nextData.layer = currentLayer;
+          nextData.targetLayer = Math.max(1, targetLayer);
       }
       updated.data = nextData;
       return updated;
@@ -629,6 +622,7 @@ function AppContent() {
         nodeIdCounter: state.nodeIdCounter,
         floorNames: state.floorNames,
       };
+      setUiSettings({ ...defaultUiSettings, ...(state.uiSettings || {}) });
       if (layers.length <= 1) {
         setPendingImport({
           ...cleanedState,
@@ -710,7 +704,6 @@ function AppContent() {
   const getEdgeLabel = useCallback(
     (
       sourceNodeId: string,
-      targetNodeId: string | null | undefined,
       nodeList: Node[],
       sourceHandle?: string | null,
       edgeData?: Record<string, unknown> | null,
@@ -1021,14 +1014,14 @@ function AppContent() {
         targetHandle?: string | null,
       ): string | undefined => {
         if (!node) return undefined;
-        if (node.type !== "smartSplitter") {
-          return getDirectItemId(node, sourceHandle, targetHandle);
-        }
-        const explicit = getDirectItemId(node, sourceHandle, targetHandle);
-        if (explicit) return explicit;
-        const incomingItems = resolveSplitterIncomingItems(node);
-        if (incomingItems.length === 1) return incomingItems[0];
-        return undefined;
+      if (node.type !== "smartSplitter" && node.type !== "splitter") {
+        return getDirectItemId(node, sourceHandle, targetHandle);
+      }
+      const explicit = getDirectItemId(node, sourceHandle, targetHandle);
+      if (explicit) return explicit;
+      const incomingItems = resolveSplitterIncomingItems(node);
+      if (incomingItems.length === 1) return incomingItems[0];
+      return undefined;
       };
 
       const edgeItemId = getEdgeItemId(
@@ -1139,7 +1132,6 @@ function AppContent() {
 
       const label = getEdgeLabel(
         resolvedParams.source || "",
-        resolvedParams.target,
         nodesRef.current,
         params.sourceHandle || null,
         {
@@ -1207,7 +1199,7 @@ function AppContent() {
                   selectedNodeIdRef.current === node.data.stackActiveId
                 ) {
                   setSelectedNodeId(activeId);
-                  captureNodeSnapshot(activeId);
+                  captureNodeSnapshotRef.current(activeId);
                 }
                 return {
                   ...node,
@@ -1253,7 +1245,7 @@ function AppContent() {
         if (selectedNodeIdRef.current === nodeId) {
           const updated = updatedNodes.find((node) => node.id === nodeId);
           if (updated) {
-            setSelectedNodeSnapshot(buildNodeSnapshot(updated));
+            setSelectedNodeSnapshot(buildNodeSnapshotRef.current(updated));
           }
         }
 
@@ -1268,8 +1260,42 @@ function AppContent() {
             "purity",
             "buildingId",
             "transportingItem",
+            "storedItem",
+            "splitOutputs",
           ];
         if (relevantFields.includes(field)) {
+          const resolveEdgeItemId = (
+            sourceNode: Node | undefined,
+            sourceHandle?: string | null,
+          ): string | undefined => {
+            if (!sourceNode) return undefined;
+            const sourceData = sourceNode.data as Record<string, unknown>;
+            if (sourceNode.type === "building") {
+              const outputItem = sourceData.outputItem as string | undefined;
+              if (outputItem) return outputItem;
+              return sourceData.storedItem as string | undefined;
+            }
+            if (sourceNode.type === "conveyorLift") {
+              return sourceData.transportingItem as string | undefined;
+            }
+            if (sourceNode.type === "smartSplitter") {
+              const outputs =
+                (sourceData.splitOutputs as Array<{ item: string | null }> | undefined) ??
+                (sourceData.autoAssignedOutputs as Array<{ item: string | null }> | undefined);
+              if (!outputs) return undefined;
+              if (sourceHandle === "out-top-0") return outputs[0]?.item ?? undefined;
+              if (sourceHandle === "out-right-0") return outputs[1]?.item ?? undefined;
+              if (sourceHandle === "out-bottom-0") return outputs[2]?.item ?? undefined;
+              return undefined;
+            }
+            if (sourceNode.type === "splitter") {
+              const incomingItems =
+                incomingItemsByNodeRef.current.get(sourceNode.id) || [];
+              if (incomingItems.length === 1) return incomingItems[0];
+              return undefined;
+            }
+            return undefined;
+          };
           setEdges((eds) =>
             eds.map((edge) => {
               const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
@@ -1284,17 +1310,25 @@ function AppContent() {
               ) {
                 return edge;
               }
+              const sourceId = virtualSourceId || edge.source;
+              const sourceNode = updatedNodes.find((n) => n.id === sourceId);
+              const nextItemId = resolveEdgeItemId(
+                sourceNode,
+                edge.sourceHandle || null,
+              );
               const newLabel = getEdgeLabel(
                 edge.source,
-                edge.target,
                 updatedNodes,
                 edge.sourceHandle || null,
-                (edge.data as Record<string, unknown> | undefined) || null,
+                {
+                  ...(edge.data as Record<string, unknown> | undefined),
+                  itemId: nextItemId,
+                },
               );
-              if (edge.data?.label !== newLabel) {
+              if (edge.data?.label !== newLabel || edge.data?.itemId !== nextItemId) {
                 return {
                   ...edge,
-                  data: { ...edge.data, label: newLabel },
+                  data: { ...edge.data, label: newLabel, itemId: nextItemId },
                 };
               }
               return edge;
@@ -1460,7 +1494,7 @@ function AppContent() {
     if (target?.closest('[data-no-panel="true"]')) {
       allowPanelRef.current = false;
       setSelectedNodeId(null);
-      captureNodeSnapshot(null);
+      captureNodeSnapshotRef.current(null);
       ignoreSelectionRef.current = true;
       return;
     }
@@ -1471,13 +1505,13 @@ function AppContent() {
     const isStackParent = stackCount && stackCount > 1 && stackActiveId;
     const targetId = isStackParent ? stackActiveId : node.id;
     setSelectedNodeId(targetId);
-    captureNodeSnapshot(targetId);
-  }, [captureNodeSnapshot]);
+    captureNodeSnapshotRef.current(targetId);
+  }, []);
 
   const handlePaneClick = useCallback(() => {
     allowPanelRef.current = false;
     setSelectedNodeId(null);
-    captureNodeSnapshot(null);
+    captureNodeSnapshotRef.current(null);
     setSelectedNodesForStack([]);
   }, []);
 
@@ -1496,7 +1530,7 @@ function AppContent() {
       );
       allowPanelRef.current = false;
       setSelectedNodeId(null);
-      captureNodeSnapshot(null);
+      captureNodeSnapshotRef.current(null);
     },
     [setNodes],
   );
@@ -1701,13 +1735,13 @@ function AppContent() {
       if (ctrlDownRef.current) {
         allowPanelRef.current = false;
         setSelectedNodeId(null);
-        captureNodeSnapshot(null);
+        captureNodeSnapshotRef.current(null);
         return;
       }
       if (params.nodes.length !== 1) {
         allowPanelRef.current = false;
         setSelectedNodeId(null);
-        captureNodeSnapshot(null);
+        captureNodeSnapshotRef.current(null);
         return;
       }
       // Don't open panel for ghost nodes
@@ -1725,20 +1759,11 @@ function AppContent() {
         const isStackParent = stackCount && stackCount > 1 && stackActiveId;
         const targetId = isStackParent ? stackActiveId : params.nodes[0].id;
         setSelectedNodeId(targetId);
-        captureNodeSnapshot(targetId);
+        captureNodeSnapshotRef.current(targetId);
       }
     },
     [],
   );
-
-  useEffect(() => {
-    if (!selectedNodeId) return;
-    const stillExists = nodes.some((node) => node.id === selectedNodeId);
-    if (!stillExists) {
-      setSelectedNodeId(null);
-      captureNodeSnapshot(null);
-    }
-  }, [nodes, selectedNodeId]);
 
   useEffect(() => {
     // Clear selections from other layers to avoid deleting hidden nodes.
@@ -1888,6 +1913,9 @@ function AppContent() {
         if (!outputs) return [];
         return outputs.map((o) => o.item).filter(Boolean) as string[];
       }
+      if (node.type === "splitter") {
+        return [];
+      }
       return [];
     };
 
@@ -1952,6 +1980,21 @@ function AppContent() {
       addItemsToTarget(targetId, incomingItems);
     });
 
+    // Fourth pass: pass through splitter items to all outputs
+    edges.forEach((edge) => {
+      const virtualSourceId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualSourceId as string | undefined;
+      const virtualTargetId = (edge.data as Record<string, unknown> | undefined)
+        ?.virtualTargetId as string | undefined;
+      const sourceId = virtualSourceId || edge.source;
+      const targetId = virtualTargetId || edge.target;
+      const source = nodeById.get(sourceId);
+      if (!source || source.type !== "splitter") return;
+      const incomingItems = map.get(source.id) || [];
+      if (incomingItems.length === 0) return;
+      addItemsToTarget(targetId, incomingItems);
+    });
+
     return map;
   }, [edges, nodeById]);
 
@@ -1959,14 +2002,81 @@ function AppContent() {
     incomingItemsByNodeRef.current = incomingItemsByNode;
   }, [incomingItemsByNode]);
 
+  useEffect(() => {
+    setNodes((nds) => {
+      let changed = false;
+      const next = nds.map((node) => {
+        if (node.type === "building") {
+          const data = node.data as Record<string, unknown>;
+          const buildingId = data.buildingId as string | undefined;
+          const building = buildingsData.buildings.find((b) => b.id === buildingId);
+          if (building?.category === "storage") {
+            const storedItem = data.storedItem as string | undefined;
+            const storedItemManual = Boolean(
+              data.storedItemManual as boolean | undefined,
+            );
+            const incomingItems = incomingItemsByNode.get(node.id) || [];
+            if (incomingItems.length === 0 && storedItem && !storedItemManual) {
+              changed = true;
+              return {
+                ...node,
+                data: { ...node.data, storedItem: undefined },
+              };
+            }
+            if (incomingItems.length > 0) {
+              const nextItem = incomingItems[0];
+              if (storedItem !== nextItem) {
+                changed = true;
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    storedItem: nextItem,
+                    storedItemManual: false,
+                  },
+                };
+              }
+            }
+          }
+        }
+
+        if (node.type === "conveyorLift") {
+          const data = node.data as Record<string, unknown>;
+          const transportingItem = data.transportingItem as string | undefined;
+          const incomingItems = incomingItemsByNode.get(node.id) || [];
+          if (incomingItems.length === 0 && transportingItem) {
+            changed = true;
+            return {
+              ...node,
+              data: { ...node.data, transportingItem: undefined },
+            };
+          }
+          if (incomingItems.length > 0) {
+            const nextItem = incomingItems[0];
+            if (transportingItem !== nextItem) {
+              changed = true;
+              return {
+                ...node,
+                data: { ...node.data, transportingItem: nextItem },
+              };
+            }
+          }
+        }
+
+        return node;
+      });
+      return changed ? next : nds;
+    });
+  }, [incomingItemsByNode, setNodes]);
+
   const splitterAutoOutputsById = useMemo(() => {
     const map = new Map<
       string,
       Array<{ item: string | null; conveyorMk: number }>
     >();
-    logicNodes.forEach((node) => {
-      if (node.type !== "smartSplitter") return;
-      const data = node.data as Record<string, unknown>;
+      logicNodes.forEach((node) => {
+        if (node.type !== "smartSplitter") return;
+        const data = node.data as Record<string, unknown>;
       const splitOutputs = (data.splitOutputs as Array<{
         item: string | null;
         conveyorMk: number;
@@ -2046,196 +2156,44 @@ function AppContent() {
     return map;
   }, [logicNodes, incomingItemsByNode]);
 
-  // Filter and transform nodes for layer rendering
-  const layeredNodes = useMemo(() => {
-    const visible = nodes
-      .map((node) => {
-        const data = node.data as Record<string, unknown>;
-        const nodeLayer = (data.layer as number) || 1;
-        const stackActiveId = data.stackActiveId as string | undefined;
-        const stackCount = data.stackCount as number | undefined;
-        const incomingItems =
-          stackActiveId && stackCount && stackCount > 1
-            ? incomingItemsByNode.get(stackActiveId) || []
-            : incomingItemsByNode.get(node.id) || [];
-        const splitterOutputs = splitterAutoOutputsById.get(node.id);
-        const goalConnections = goalConnectionsById.get(node.id);
-        const stackActiveData =
-          stackActiveId && stackCount && stackCount > 1
-            ? (nodeById.get(stackActiveId)?.data as
-                | Record<string, unknown>
-                | undefined)
-            : undefined;
-        if (nodeLayer === currentLayer) {
-          // Active layer - normal rendering
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              isGhost: false,
-              incomingItems,
-              autoAssignedOutputs: splitterOutputs,
-              connectedItems: goalConnections?.connectedItems,
-              missingItems: goalConnections?.missingItems,
-              stackActiveData,
-            },
-            selectable: data.isStacked ? false : node.selectable,
-            draggable: data.isStacked ? false : node.draggable,
-            hidden: node.hidden || data.isStacked,
-          };
-          } else if (nodeLayer === currentLayer - 1) {
-            // One layer below - ghost mode
-            if (node.type === "conveyorLift") {
-              const direction = (data.direction as "up" | "down") || "up";
-              const targetLayer =
-                (data.targetLayer as number) ??
-                (direction === "up" ? nodeLayer + 1 : nodeLayer - 1);
-              if (targetLayer === currentLayer) {
-                return null;
-              }
-            }
-            const ghostZIndex =
-              node.type === "group" ? -5 : (node.zIndex as number | undefined);
-            return {
-              ...node,
-              zIndex: ghostZIndex,
-              data: {
-                ...node.data,
-                isGhost: true,
-                incomingItems,
-                autoAssignedOutputs: splitterOutputs,
-              connectedItems: goalConnections?.connectedItems,
-              missingItems: goalConnections?.missingItems,
-              stackActiveData,
-            },
-            selectable: false,
-            draggable: false,
-            hidden: node.hidden || data.isStacked,
-          };
-        }
-        // Other layers - hide completely
-        return null;
-      })
-      .filter(Boolean) as Node[];
+  const layeredNodes = useLayeredNodes({
+    nodes,
+    currentLayer,
+    nodeById,
+    incomingItemsByNode,
+    splitterAutoOutputsById,
+    goalConnectionsById,
+    getLiftGhostsForLayer,
+  });
 
-    // Add lift ghost nodes for lifts that target the current layer
-    const liftGhosts = getLiftGhostsForLayer(currentLayer);
-    liftGhosts.forEach(({ originalNode, ghostId }) => {
-      // Don't add ghost if the original is already on this layer
-      const originalData = originalNode.data as Record<string, unknown>;
-      const originalLayer = (originalData.layer as number) || 1;
-      if (originalLayer === currentLayer) return;
-      const ghostIncomingItems = incomingItemsByNode.get(originalNode.id) || [];
-
-      // Create a ghost node that represents the lift on this layer
-      // This ghost CAN be interacted with (unique lift behavior)
-      const ghostNode: Node = {
-        ...originalNode,
-        id: ghostId,
-        data: {
-          ...originalNode.data,
-          isGhost: true,
-          isLiftGhost: true, // Special flag - this ghost can be interacted with
-          originalLiftId: originalNode.id,
-          incomingItems: ghostIncomingItems,
-        },
-        selectable: true,
-        draggable: true,
-        connectable: true,
-      };
-      visible.push(ghostNode);
-    });
-
-    const visibleIds = new Set(visible.map((n) => n.id));
-    const normalized = visible.map((node) => {
-      const parentId = (node as Record<string, unknown>).parentId as
-        | string
-        | undefined;
-      if (parentId && !visibleIds.has(parentId)) {
-        return {
-          ...node,
-          parentId: undefined,
-          extent: undefined,
-        };
-      }
-      return node;
-    });
-
-    // Ensure parent nodes appear before their children to avoid React Flow warnings.
-    return normalized.slice().sort((a, b) => {
-      const aParent = (a as Record<string, unknown>).parentId as
-        | string
-        | undefined;
-      const bParent = (b as Record<string, unknown>).parentId as
-        | string
-        | undefined;
-      if (aParent && aParent === b.id) return 1;
-      if (bParent && bParent === a.id) return -1;
-      return 0;
-    });
-  }, [nodes, currentLayer, getLiftGhostsForLayer]);
+  const { captureNodeSnapshot } = useNodeSelectionSnapshot({
+    selectedNodeId,
+    nodes,
+    layeredNodes,
+    nodesRef,
+    incomingItemsByNodeRef,
+    setSelectedNodeId,
+    setSelectedNodeSnapshot,
+  });
 
   useEffect(() => {
-    if (!selectedNodeId) return;
-    const node = layeredNodes.find((n) => n.id === selectedNodeId);
-    if (!node) return;
-    setSelectedNodeSnapshot(buildNodeSnapshot(node));
-  }, [selectedNodeId, layeredNodes, buildNodeSnapshot]);
+    buildNodeSnapshotRef.current = (node: Node) => {
+      const incomingItems = incomingItemsByNodeRef.current.get(node.id);
+      return {
+        id: node.id,
+        type: node.type,
+        data: incomingItems ? { ...node.data, incomingItems } : node.data,
+      };
+    };
+    captureNodeSnapshotRef.current = captureNodeSnapshot;
+  }, [captureNodeSnapshot, incomingItemsByNodeRef]);
 
-  // Filter edges for visible layers
-  const layeredEdges = useMemo(() => {
-    const visibleNodeIds = new Set(layeredNodes.map((n) => n.id));
-    const layeredNodeById = new Map(layeredNodes.map((n) => [n.id, n]));
-    const liftGhosts = getLiftGhostsForLayer(currentLayer);
-    const ghostIdByOriginal = new Map<string, string>();
-    liftGhosts.forEach(({ originalNode, ghostId }) => {
-      ghostIdByOriginal.set(originalNode.id, ghostId);
-    });
-
-    return edges
-      .map((edge) => {
-        let displaySource = edge.source;
-        let displayTarget = edge.target;
-
-        const sourceGhostId = ghostIdByOriginal.get(edge.source);
-        const targetGhostId = ghostIdByOriginal.get(edge.target);
-
-        if (
-          sourceGhostId &&
-          !visibleNodeIds.has(edge.source) &&
-          visibleNodeIds.has(sourceGhostId)
-        ) {
-          displaySource = sourceGhostId;
-        }
-        if (
-          targetGhostId &&
-          !visibleNodeIds.has(edge.target) &&
-          visibleNodeIds.has(targetGhostId)
-        ) {
-          displayTarget = targetGhostId;
-        }
-
-        if (
-          !visibleNodeIds.has(displaySource) ||
-          !visibleNodeIds.has(displayTarget)
-        ) {
-          return null;
-        }
-        // Check if edge connects to ghost nodes
-        const sourceNode = layeredNodeById.get(displaySource);
-        const targetNode = layeredNodeById.get(displayTarget);
-        const isGhostEdge =
-          (sourceNode?.data as Record<string, unknown>)?.isGhost ||
-          (targetNode?.data as Record<string, unknown>)?.isGhost;
-        return {
-          ...edge,
-          source: displaySource,
-          target: displayTarget,
-          data: { ...edge.data, isGhost: isGhostEdge },
-        };
-      })
-      .filter(Boolean) as Edge[];
-  }, [edges, layeredNodes, currentLayer, getLiftGhostsForLayer]);
+  const layeredEdges = useLayeredEdges({
+    edges,
+    layeredNodes,
+    currentLayer,
+    getLiftGhostsForLayer,
+  });
 
   // Get max layer for layer panel
   const maxLayer = useMemo(() => {
@@ -2356,12 +2314,7 @@ function AppContent() {
 
   const CustomEdge = useMemo(() => createCustomEdge(edgeContextRef), []);
 
-  const edgeTypesLocal = useMemo(
-    () => ({
-      custom: CustomEdge,
-    }),
-    [CustomEdge],
-  );
+  const edgeTypesLocal = useMemo(() => createEdgeTypes(CustomEdge), [CustomEdge]);
 
   const CustomConnectionLine = useMemo(
     () => createCustomConnectionLine(isDraggingRef),
@@ -2425,6 +2378,7 @@ function AppContent() {
             onNodeDrag={handleNodeDrag}
             onNodeDragStart={handleNodeDragStart}
             onNodeDragStop={handleNodeDragStop}
+            isValidConnection={isValidConnection}
             isDragging={isDragging}
             hideMinimap={uiSettings.hideMinimap}
             nodesDraggable={!interactionLocked}

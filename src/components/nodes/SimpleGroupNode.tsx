@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { NodeProps, NodeResizer } from '@xyflow/react';
-import itemsData from '../../data/items.json';
 import { useUiSettings } from '../../contexts/UiSettingsContext';
 import { themeMap } from '../../constants/themeMap';
 
@@ -52,8 +51,8 @@ function SimpleGroupNode({ id, data, selected }: NodeProps) {
   const lockChildren = (data.lockChildren as boolean) ?? true;
   const comment = (data.comment as string | undefined) || '';
   const formatNum = (value: number) => (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1));
-  const ghostSurfaceAlpha = 0.02;
-  const ghostPanelAlpha = 0.06;
+  const ghostSurfaceAlpha = 0.008;
+  const ghostPanelAlpha = 0.04;
 
   return (
     <div

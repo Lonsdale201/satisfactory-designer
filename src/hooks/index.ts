@@ -3,5 +3,8 @@ export { useNodeOperations } from "./useNodeOperations";
 export { useStackingLogic } from "./useStackingLogic";
 export { useKeyboardShortcuts } from "./useKeyboardShortcuts";
 export { useConveyorLiftLogic } from "./useConveyorLiftLogic";
+export { useLayeredNodes } from "./useLayeredNodes";
+export { useLayeredEdges } from "./useLayeredEdges";
+export { useNodeSelectionSnapshot } from "./useNodeSelectionSnapshot";
 export { useConnectionHandling } from "./useConnectionHandling";
 export type { NodeType } from "./useNodeOperations";

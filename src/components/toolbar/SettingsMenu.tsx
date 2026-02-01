@@ -9,6 +9,7 @@ export interface UiSettings {
   hideAllImages: boolean;
   hideIoStats: boolean;
   hideMinimap: boolean;
+  hideRequiredItems: boolean;
 }
 
 interface SettingsMenuProps {
@@ -85,8 +86,6 @@ const SettingsMenu = memo(
           />
         </MenuItem>
         <MenuItem>
-        </MenuItem>
-        <MenuItem>
           <FormControlLabel
             control={
               <Switch
@@ -152,6 +151,23 @@ const SettingsMenu = memo(
               />
             }
             label="Hide minimap"
+          />
+        </MenuItem>
+        <MenuItem>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={Boolean(uiSettings.hideRequiredItems)}
+                onChange={(e) =>
+                  setUiSettings((s) => ({
+                    ...s,
+                    hideRequiredItems: e.target.checked,
+                  }))
+                }
+              />
+            }
+            label="Hide required items"
           />
         </MenuItem>
       </Menu>

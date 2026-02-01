@@ -22,6 +22,7 @@ export interface NodeStatus {
   mismatchOutgoingCount?: number;
   mismatchOutgoingTotal?: number;
   disconnected?: boolean;
+  terminalInputOnly?: boolean;
 }
 
 export type NodeStatusMap = Record<string, NodeStatus>;

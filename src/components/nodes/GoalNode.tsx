@@ -54,7 +54,7 @@ interface GoalNodeProps {
   };
 }
 
-const GoalNode = memo(({ id, data }: GoalNodeProps) => {
+const GoalNode = memo(({ data }: GoalNodeProps) => {
   const ui = useUiSettings();
   const selectedItem = items.find((i) => i.id === data.itemId);
   const isCollapsed = data.collapsed ?? false;
@@ -311,7 +311,7 @@ const GoalNode = memo(({ id, data }: GoalNodeProps) => {
             </div>
 
             {/* Required Inputs */}
-            {requiredInputs.length > 0 && (
+            {!ui.hideRequiredItems && requiredInputs.length > 0 && (
               <div
                 style={{
                   backgroundColor: "#111827",

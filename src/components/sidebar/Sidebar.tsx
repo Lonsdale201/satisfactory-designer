@@ -6,7 +6,6 @@ import {
   Typography,
   List,
   ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Divider,
@@ -73,6 +72,7 @@ interface SidebarProps {
     type:
       | "building"
       | "group"
+      | "splitter"
       | "smartSplitter"
       | "goal"
       | "conveyorLift",
@@ -433,6 +433,49 @@ function Sidebar({
                     </Box>
                     <Typography variant="caption" sx={{ color: "#666" }}>
                       Group nodes
+                    </Typography>
+                  </Paper>
+                  <Paper
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        "application/satisplanner",
+                        JSON.stringify({
+                          type: "splitter",
+                          data: {
+                            label: "Splitter",
+                          },
+                        }),
+                      );
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onClick={() =>
+                      onAddNode("splitter", {
+                        label: "Splitter",
+                      })
+                    }
+                    sx={{
+                      p: 1,
+                      bgcolor: "#16213e",
+                      cursor: "grab",
+                      border: "1px solid #1f2937",
+                      "&:hover": { bgcolor: "#1b2a4a" },
+                      "&:active": { cursor: "grabbing" },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Icons.CallSplit
+                        sx={{ color: "#38bdf8", fontSize: 20 }}
+                      />
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#fff", fontSize: "0.75rem" }}
+                      >
+                        Splitter
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: "#666" }}>
+                      Pass-through
                     </Typography>
                   </Paper>
                   <Paper

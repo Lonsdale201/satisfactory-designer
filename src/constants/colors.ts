@@ -4,12 +4,12 @@ export const MATERIAL_COLORS = {
   conveyor: {
     primary: '#fa9549',
     selected: '#fff',
-    ghost: 'rgba(250, 149, 73, 0.25)',
+    ghost: 'rgba(250, 149, 73, 0.12)',
   },
   pipe: {
     primary: '#3b82f6',
     selected: '#60a5fa',
-    ghost: 'rgba(59, 130, 246, 0.25)',
+    ghost: 'rgba(59, 130, 246, 0.12)',
   },
 } as const;
 

@@ -176,7 +176,6 @@ export function useStackingLogic({
     const parentNode = selectedNodesForStack[0];
     const parentData = parentNode.data as Record<string, unknown>;
     const stackedNodeIds = (parentData.stackedNodeIds as string[]) || [];
-    const stackId = parentData.stackId as string | undefined;
     const stackPositions = parentData.stackPositions as Record<string, { x: number; y: number }> | undefined;
     const stackAnchor = parentData.stackAnchor as { x: number; y: number } | undefined;
 

@@ -260,11 +260,11 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
     dispatchChange('powerUsage', parseFloat(event.target.value) || 0);
   }, [dispatchChange]);
 
-  const handleConveyorMkChange = useCallback((event: SelectChangeEvent) => {
+  const handleConveyorMkChange = useCallback((event: SelectChangeEvent<number>) => {
     dispatchChange('conveyorMk', Number(event.target.value));
   }, [dispatchChange]);
 
-  const handlePipeMkChange = useCallback((event: SelectChangeEvent) => {
+  const handlePipeMkChange = useCallback((event: SelectChangeEvent<number>) => {
     dispatchChange('pipeMk', Number(event.target.value));
   }, [dispatchChange]);
 
@@ -659,7 +659,11 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                     options={storageItems}
                     getOptionLabel={(option) => option.name}
                     value={selectedStoredItem || null}
-                    onChange={(_, newValue) => dispatchChange('storedItem', newValue?.id || '')}
+                    onChange={(_, newValue) => {
+                      const nextId = newValue?.id || '';
+                      dispatchChange('storedItem', nextId);
+                      dispatchChange('storedItemManual', Boolean(nextId));
+                    }}
                     renderOption={(props, option) => {
                       const { key, ...rest } = props as { key: string } & Record<string, unknown>;
                       const Icon = getIconComponent(option.icon);
@@ -822,10 +826,10 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                 {hasConveyor && (
                   <FormControl fullWidth size="small">
                     <InputLabel sx={{ color: '#9ca3af' }}>Conveyor</InputLabel>
-                    <Select
-                      value={(nodeData?.conveyorMk as number) || 1}
-                      label="Conveyor"
-                      onChange={handleConveyorMkChange}
+                  <Select<number>
+                    value={(nodeData?.conveyorMk as number) || 1}
+                    label="Conveyor"
+                    onChange={handleConveyorMkChange}
                       sx={{
                         bgcolor: '#0f172a',
                         color: '#fff',
@@ -845,10 +849,10 @@ function NodeEditorPanel({ node, onClose, onDelete, onDuplicate }: NodeEditorPan
                 {hasPipe && (
                   <FormControl fullWidth size="small">
                     <InputLabel sx={{ color: '#9ca3af' }}>Pipe</InputLabel>
-                    <Select
-                      value={(nodeData?.pipeMk as number) || 1}
-                      label="Pipe"
-                      onChange={handlePipeMkChange}
+                  <Select<number>
+                    value={(nodeData?.pipeMk as number) || 1}
+                    label="Pipe"
+                    onChange={handlePipeMkChange}
                       sx={{
                         bgcolor: '#0f172a',
                         color: '#fff',

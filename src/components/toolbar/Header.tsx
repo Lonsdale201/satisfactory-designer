@@ -11,7 +11,6 @@ import {
   Button,
 } from "@mui/material";
 import * as Icons from "@mui/icons-material";
-import { Node } from "@xyflow/react";
 import SettingsMenu, { UiSettings } from "./SettingsMenu";
 import ReactMarkdown from "react-markdown";
 import changelogRaw from "../../../CHANGELOG.md?raw";
@@ -64,6 +63,9 @@ const Header = memo(
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [changelogOpen, setChangelogOpen] = useState(false);
     const [changelogPage, setChangelogPage] = useState(0);
+    const [hasNewChangelog, setHasNewChangelog] = useState(false);
+
+    const CHANGELOG_SEEN_KEY = "satisplanner_changelog_seen";
 
     const changelogBlocks = useMemo(() => {
       const blocks = changelogRaw
@@ -84,8 +86,25 @@ const Header = memo(
     const pageBlocks = changelogBlocks.slice(pageStart, pageStart + 2);
 
     useEffect(() => {
-      if (changelogOpen) setChangelogPage(0);
+      if (changelogOpen) {
+        setChangelogPage(0);
+        try {
+          localStorage.setItem(CHANGELOG_SEEN_KEY, appVersion);
+        } catch {
+          // ignore storage errors
+        }
+        setHasNewChangelog(false);
+      }
     }, [changelogOpen]);
+
+    useEffect(() => {
+      try {
+        const seen = localStorage.getItem(CHANGELOG_SEEN_KEY);
+        setHasNewChangelog(seen !== appVersion);
+      } catch {
+        setHasNewChangelog(false);
+      }
+    }, [appVersion]);
 
     const openSettings = (event: React.MouseEvent<HTMLElement>) => {
       setSettingsAnchor(event.currentTarget);
@@ -346,6 +365,7 @@ const Header = memo(
           variant="text"
           onClick={() => setChangelogOpen(true)}
           sx={{
+            position: "relative",
             color: "#e2e8f0",
             textTransform: "uppercase",
             fontSize: 12,
@@ -354,9 +374,36 @@ const Header = memo(
             borderRadius: 6,
             border: "1px solid rgba(148, 163, 184, 0.25)",
             "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+            "@keyframes changelog-pulse": {
+              "0%": { transform: "scale(0.9)", opacity: 0.6 },
+              "70%": { transform: "scale(1.6)", opacity: 0 },
+              "100%": { transform: "scale(1.6)", opacity: 0 },
+            },
           }}
         >
           Changelog
+          {hasNewChangelog && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: "#ef4444",
+                boxShadow: "0 0 6px rgba(239,68,68,0.9)",
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(239,68,68,0.6)",
+                  animation: "changelog-pulse 1.6s ease-out infinite",
+                },
+              }}
+            />
+          )}
         </Button>
         <Button
           size="small"

@@ -48,7 +48,7 @@ interface ConveyorLiftNodeProps {
 }
 
 const ConveyorLiftNode = memo(
-  ({ id, data, selected }: ConveyorLiftNodeProps) => {
+  ({ data, selected }: ConveyorLiftNodeProps) => {
     const ui = useUiSettings();
     const isCollapsed = data.collapsed ?? false;
     const isGhost = data.isGhost ?? false;
@@ -130,10 +130,10 @@ const ConveyorLiftNode = memo(
       },
     } as const;
 
-    // Lift default is cyan theme to stand out
+    // Lift default is indigo to match other utility nodes
     const themeColors = theme
-      ? themeMap[theme as keyof typeof themeMap] || themeMap.cyan
-      : themeMap.cyan;
+      ? themeMap[theme as keyof typeof themeMap] || themeMap.indigo
+      : themeMap.indigo;
 
     // Ghost lift can still be interacted with (special behavior)
     const canInteract = !isGhost || isLiftGhost;
@@ -185,14 +185,6 @@ const ConveyorLiftNode = memo(
 
     const DirectionIcon =
       direction === "up" ? Icons.ArrowUpward : Icons.ArrowDownward;
-    const targetLayer =
-      data.targetLayer ??
-      (data.layer
-        ? direction === "up"
-          ? data.layer + 1
-          : data.layer - 1
-        : null);
-
     return (
       <div
         style={{

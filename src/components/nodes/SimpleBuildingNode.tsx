@@ -184,16 +184,12 @@ const SimpleBuildingNode = memo(
       recipeEntries,
       hasRecipes,
       effectiveRecipeIndex,
-      activeRecipe,
       selectedAltIndex,
-      alternateOptions,
       filteredAltOptions,
       hasAlternateOptions,
       canUseDefault,
       effectiveAltIndex,
-      activeAlt,
       activeRequirements,
-      activeByproducts,
       requiredInputs,
       requirementsMet,
       missingRequirements,
@@ -313,10 +309,19 @@ const SimpleBuildingNode = memo(
       selectedBuilding,
     ]);
 
+    const ghostBorderColor = isDarkTheme ? "#94a3b8" : themeColors.border;
+    const ghostTextColor = isDarkTheme ? "#e2e8f0" : `${themeColors.header}CC`;
+    const ghostAccent = isDarkTheme ? "#94a3b8" : themeColors.header;
+
     const getHandleStyle = (type: "conveyor" | "pipe") => {
       if (isGhost) {
         return {
-          background: type === "pipe" ? "#3b82f6" : themeColors.header,
+          background:
+            type === "pipe"
+              ? "#3b82f6"
+              : isDarkTheme
+                ? "#94a3b8"
+                : themeColors.header,
           width: 8,
           height: 8,
           border: "none",
@@ -324,7 +329,7 @@ const SimpleBuildingNode = memo(
           outline:
             type === "pipe"
               ? "1px dashed rgba(59, 130, 246, 0.5)"
-              : `1px dashed ${themeColors.header}80`,
+              : `1px dashed ${isDarkTheme ? "#94a3b8" : themeColors.header}80`,
           outlineOffset: "2px",
         } as const;
       }
@@ -359,9 +364,9 @@ const SimpleBuildingNode = memo(
       displayData.calcStatus === "optimal"
         ? "Supply rate matches demand"
         : displayData.calcStatus === "under"
-          ? `Not enough supply! Needed: ${formatNum(displayData.calcDemand as number | undefined)}/min, Available: ${formatNum(displayData.calcSupply as number | undefined)}/min`
+          ? `Under: ${formatNum(displayData.calcSupply as number | undefined)}/min vs ${formatNum(displayData.calcDemand as number | undefined)}/min`
           : displayData.calcStatus === "over"
-            ? `Supply exceeds demand. Supply: ${formatNum(displayData.calcSupply as number | undefined)}/min, Demand: ${formatNum(displayData.calcDemand as number | undefined)}/min`
+            ? `Over: ${formatNum(displayData.calcSupply as number | undefined)}/min vs ${formatNum(displayData.calcDemand as number | undefined)}/min`
             : undefined;
 
     return (
@@ -402,9 +407,11 @@ const SimpleBuildingNode = memo(
                 padding: "1px 8px",
                 fontSize: 10,
                 fontWeight: 700,
-                color: `${themeColors.header}CC`,
-                background: "rgba(26, 26, 46, 0.45)",
-                border: `1px dashed ${themeColors.header}8C`,
+                color: ghostTextColor,
+                background: isDarkTheme
+                  ? "rgba(148, 163, 184, 0.2)"
+                  : "rgba(26, 26, 46, 0.45)",
+                border: `1px dashed ${ghostAccent}8C`,
                 borderRadius: 999,
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
@@ -420,9 +427,11 @@ const SimpleBuildingNode = memo(
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: `${themeColors.header}B3`,
-                background: "rgba(26, 26, 46, 0.35)",
-                border: `1px dashed ${themeColors.header}80`,
+                color: ghostTextColor,
+                background: isDarkTheme
+                  ? "rgba(148, 163, 184, 0.2)"
+                  : "rgba(26, 26, 46, 0.35)",
+                border: `1px dashed ${ghostAccent}80`,
                 padding: "1px 6px",
                 borderRadius: 999,
                 marginRight: 4,
@@ -477,9 +486,10 @@ const SimpleBuildingNode = memo(
           <div
             style={{
               minWidth: isCollapsed ? 180 : 220,
-              backgroundColor: isGhost ? "transparent" : themeColors.body,
+              backgroundColor:
+                isGhost && isDarkTheme ? "rgba(148, 163, 184, 0.06)" : isGhost ? "transparent" : themeColors.body,
               border: isGhost
-                ? `2px dashed ${themeColors.border}66`
+                ? `2px dashed ${ghostBorderColor}80`
                 : `2px solid ${selected ? "#fff" : themeColors.border}`,
               borderRadius: 8,
               fontFamily: "Inter, sans-serif",
@@ -595,8 +605,8 @@ const SimpleBuildingNode = memo(
                       height: 40,
                       borderRadius: 6,
                       objectFit: "cover",
-                      opacity: 0.6,
-                      border: `1px dashed ${themeColors.border}4D`,
+                      opacity: 0.7,
+                      border: `1px dashed ${ghostBorderColor}80`,
                     }}
                   />
                 )}
@@ -605,8 +615,8 @@ const SimpleBuildingNode = memo(
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: `${themeColors.header}BF`,
-                      border: `1px dashed ${themeColors.header}80`,
+                color: ghostTextColor,
+                border: `1px dashed ${ghostAccent}80`,
                       borderRadius: 999,
                       padding: "2px 8px",
                       letterSpacing: "0.4px",
@@ -654,11 +664,14 @@ const SimpleBuildingNode = memo(
                       getAltLabel={getAltLabel}
                       onAltSelect={handleAltSelect}
                       hideAllImages={ui.hideAllImages}
+                      hideRequiredItems={ui.hideRequiredItems}
                       outputItem={selectedOutputItem}
                       missingRequirements={missingRequirements}
                       items={items}
                     />
-                    {activeRequirements.length > 0 && selectedOutputItem && (
+                    {!ui.hideRequiredItems &&
+                      activeRequirements.length > 0 &&
+                      selectedOutputItem && (
                       <div style={{ marginBottom: 8 }}>
                         <InputsPanel
                           themeColors={themeColors}

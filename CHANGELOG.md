@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.2.4] - 2026-02-01
+
+### Added
+
+- New setting: hide required item indicators
+- New node: Splitter
+
+### Fixed
+
+- Storage manual item selection no longer gets stuck
+- Storage now reacts when the connected building's item changes
+- Lift reacts to item changes on connected nodes (including disconnects)
+
+### Changed
+
+- Refactor across multiple areas
+- Storage systems now enforce a single item type (mixed types later)
+- Ghost mode production line design adjusted
+- Settings are now persisted (local storage + export)
+- New changelog indicator with persistent state
+- Storage systems now allow only one connection per handle (more nodes soon)
+- Ghost mode connection design clarified for floor separation
+- Overproduction text is clearer and easier to understand
+
 ## [0.2.3] - 2026-01-31
 
 ### Added
@@ -9,7 +33,7 @@
 ### Fixed
 
 - Calculation system improvements
-- ghost mode Group (prod line) color fixing
+- Ghost mode group (prod line) color fixing
 
 ### Changed
 
@@ -57,14 +81,13 @@
 - Missing item list made more compact to keep nodes from growing too wide
 
 ### Changed
+
 - New item logic: removed hard-coded filters to support flexible alternate recipes
 - Storage fill calculations now work for solid and fluid containers
 - Hybrid output buildings (e.g. Refinery) output logic fixed
 - Transport node removed (distance-based results were unreliable)
 - Smart Splitter issues fixed
 - Output conveyor type is now unified (single MK for all outputs)
-
-
 
 ## [0.2.0] - 2026-01-30
 
@@ -118,3 +141,4 @@
 ### Fixed
 
 - Calculator now properly handles fluid volumes in mÂł
+
