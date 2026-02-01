@@ -21,7 +21,7 @@ import * as Icons from '@mui/icons-material';
 import { Building, Item } from '../../types';
 import buildingsData from '../../data/buildings.json';
 import itemsData from '../../data/items.json';
-import { getRotatedHandleStyle } from '../../utils/handleRotation';
+import { getRotatedHandlePosition, getRotatedHandleStyle } from '../../utils/handleRotation';
 
 const buildings: Building[] = buildingsData.buildings as Building[];
 const items: Item[] = itemsData.items;
@@ -140,7 +140,7 @@ const BuildingNodeComponent = memo(({ data, id }: BuildingNodeProps) => {
           <Handle
             key={`input-${index}`}
             type="target"
-            position={Position.Left}
+            position={getRotatedHandlePosition({ x: 0, y: baseY }, handleRotation)}
             id={`input-${index}`}
             className="handle-input"
             style={{
@@ -156,7 +156,7 @@ const BuildingNodeComponent = memo(({ data, id }: BuildingNodeProps) => {
       {hasOutput && (
         <Handle
           type="source"
-          position={Position.Right}
+          position={getRotatedHandlePosition({ x: 100, y: 50 }, handleRotation)}
           id="output-0"
           className="handle-output"
           style={{

@@ -18,7 +18,7 @@ import {
   CalcStatusPanel,
   InventoryPanel,
 } from "./BuildingPanels";
-import { getRotatedHandleStyle } from "../../utils/handleRotation";
+import { getRotatedHandlePosition, getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const buildings: Building[] = (buildingsData as { buildings: Building[] })
   .buildings;
@@ -518,11 +518,15 @@ const SimpleBuildingNode = memo(
                   inputCount === 1
                     ? 50
                     : 25 + index * (50 / Math.max(inputCount - 1, 1));
+                const rotatedPosition = getRotatedHandlePosition(
+                  { x: 0, y: baseY },
+                  handleRotation,
+                );
                 return (
                   <Handle
                     key={`input-${type}-${index}`}
                     type="target"
-                    position={Position.Left}
+                    position={rotatedPosition}
                     id={`in-${type}-${index}`}
                     className={type === "pipe" ? "handle-pipe" : "handle-input"}
                     style={{
@@ -543,11 +547,15 @@ const SimpleBuildingNode = memo(
                   outputCount === 1
                     ? 50
                     : 25 + index * (50 / Math.max(outputCount - 1, 1));
+                const rotatedPosition = getRotatedHandlePosition(
+                  { x: 100, y: baseY },
+                  handleRotation,
+                );
                 return (
                   <Handle
                     key={`output-${type}-${index}`}
                     type="source"
-                    position={Position.Right}
+                    position={rotatedPosition}
                     id={`out-${type}-${index}`}
                     className={
                       type === "pipe" ? "handle-pipe" : "handle-output"

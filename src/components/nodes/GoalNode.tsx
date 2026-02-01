@@ -3,7 +3,7 @@ import { Handle, Position, useUpdateNodeInternals } from "@xyflow/react";
 import { Item } from "../../types";
 import itemsData from "../../data/items.json";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
-import { getRotatedHandleStyle } from "../../utils/handleRotation";
+import { getRotatedHandlePosition, getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -170,7 +170,7 @@ const GoalNode = memo(({ data, id }: GoalNodeProps) => {
             <Handle
               key={`input-${index}`}
               type="target"
-              position={Position.Left}
+              position={getRotatedHandlePosition({ x: 0, y: baseY }, handleRotation)}
               id={`in-conveyor-${index}`}
               className="handle-input"
               style={{
@@ -432,7 +432,7 @@ const GoalNode = memo(({ data, id }: GoalNodeProps) => {
         {/* Output Handle */}
         <Handle
           type="source"
-          position={Position.Right}
+          position={getRotatedHandlePosition({ x: 100, y: 50 }, handleRotation)}
           id="out-conveyor-0"
           className="handle-output"
           style={{

@@ -4,7 +4,7 @@ import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { Item, SplitterOutputConfig } from '../../types';
 import itemsData from '../../data/items.json';
 import { useUiSettings } from '../../contexts/UiSettingsContext';
-import { getRotatedHandleStyle } from '../../utils/handleRotation';
+import { getRotatedHandlePosition, getRotatedHandleStyle } from '../../utils/handleRotation';
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob('../../assets/items/*', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
@@ -119,7 +119,7 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
       {/* Input Handle - Back (Left) */}
       <Handle
         type="target"
-        position={Position.Left}
+        position={getRotatedHandlePosition({ x: 0, y: 50 }, handleRotation)}
         id="in-conveyor-0"
         className="handle-input"
         style={{
@@ -131,7 +131,7 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
       {/* Output Handles - Top, Right, Bottom */}
       <Handle
         type="source"
-        position={Position.Top}
+        position={getRotatedHandlePosition({ x: 50, y: 0 }, handleRotation)}
         id="out-top-0"
         className="handle-output"
         style={{
@@ -147,7 +147,7 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
       />
       <Handle
         type="source"
-        position={Position.Right}
+        position={getRotatedHandlePosition({ x: 100, y: 50 }, handleRotation)}
         id="out-right-0"
         className="handle-output"
         style={{
@@ -163,7 +163,7 @@ const SmartSplitterNode = memo(({ id, data, selected }: SmartSplitterNodeProps) 
       />
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={getRotatedHandlePosition({ x: 50, y: 100 }, handleRotation)}
         id="out-bottom-0"
         className="handle-output"
         style={{

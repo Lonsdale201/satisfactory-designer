@@ -6,7 +6,7 @@ import { CONVEYOR_RATES } from "../../constants";
 import itemsData from "../../data/items.json";
 import type { Item } from "../../types";
 import { useUiSettings } from "../../contexts/UiSettingsContext";
-import { getRotatedHandleStyle } from "../../utils/handleRotation";
+import { getRotatedHandlePosition, getRotatedHandleStyle } from "../../utils/handleRotation";
 
 const items: Item[] = itemsData.items;
 const itemImageMap = import.meta.glob("../../assets/items/*", {
@@ -208,7 +208,7 @@ const ConveyorLiftNode = memo(
         {/* Input Handle */}
         <Handle
           type="target"
-          position={Position.Left}
+          position={getRotatedHandlePosition({ x: 0, y: 50 }, handleRotation)}
           id="in-conveyor-0"
           className="handle-input"
           style={{
@@ -220,7 +220,7 @@ const ConveyorLiftNode = memo(
         {/* Output Handle */}
         <Handle
           type="source"
-          position={Position.Right}
+          position={getRotatedHandlePosition({ x: 100, y: 50 }, handleRotation)}
           id="out-conveyor-0"
           className="handle-output"
           style={{
