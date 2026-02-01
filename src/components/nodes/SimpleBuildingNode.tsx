@@ -491,6 +491,7 @@ const SimpleBuildingNode = memo(
           >
             {/* Status Indicator Dot - positioned at top-right corner */}
             {!isGhost &&
+              ui.showProductionEfficiency &&
               displayData.calcStatus &&
               (selectedOutputItem || selectedStoredItem) && (
                 <div
