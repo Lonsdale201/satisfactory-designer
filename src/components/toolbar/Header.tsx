@@ -62,6 +62,7 @@ const Header = memo(
     );
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [changelogOpen, setChangelogOpen] = useState(false);
+    const [howToOpen, setHowToOpen] = useState(false);
     const [changelogPage, setChangelogPage] = useState(0);
     const [hasNewChangelog, setHasNewChangelog] = useState(false);
 
@@ -422,6 +423,24 @@ const Header = memo(
         >
           Info
         </Button>
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => setHowToOpen(true)}
+          startIcon={<Icons.Add sx={{ fontSize: 16 }} />}
+          sx={{
+            color: "#e2e8f0",
+            textTransform: "uppercase",
+            fontSize: 12,
+            fontWeight: 700,
+            px: 1,
+            borderRadius: 6,
+            border: "1px solid rgba(148, 163, 184, 0.25)",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+          }}
+        >
+          How To
+        </Button>
       </Box>
 
       {/* Confirm delete modal */}
@@ -526,6 +545,164 @@ const Header = memo(
             </Button>
           </Box>
           <Button onClick={() => setChangelogOpen(false)} sx={{ color: "#e2e8f0" }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* How To modal */}
+      <Dialog
+        open={howToOpen}
+        onClose={() => setHowToOpen(false)}
+        PaperProps={{ sx: { bgcolor: "#111827", color: "#e5e7eb", minWidth: 420 } }}
+      >
+        <DialogTitle>How To</DialogTitle>
+        <DialogContent sx={{ maxHeight: 420, overflowY: "auto", color: "#cbd5f5" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                What is this?
+              </Typography>
+              <Typography variant="body2">
+                This is a visual factory planning tool for Satisfactory. The dataset is still
+                in progress, so some data may be missing and calculations can be inaccurate.
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                Left sidebar
+              </Typography>
+              <Typography variant="body2">
+                <strong>Buildings:</strong> Find all relevant buildings here. Click or drag them
+                onto the canvas to start planning.
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                <strong>Items:</strong> Shows the total output of your factory. Only items you set
+                are counted (levels are not separated here).
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                <strong>Energy:</strong> Displays total power usage and a list of power-consuming
+                buildings.
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                Controls
+              </Typography>
+              <Typography variant="body2">
+                Nodes use the same input/output layout and colors as in-game.
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, pl: 2, mb: 0 }}>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  Left click or drag to place buildings onto the canvas.
+                </Typography>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  Right mouse button (or middle mouse) pans the editor; mouse wheel zooms.
+                </Typography>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  Hold <strong>Ctrl</strong> to multi-select and move/delete together.
+                </Typography>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  Copy &amp; paste: <strong>Ctrl+C</strong> / <strong>Ctrl+V</strong> (single or multiple nodes).
+                </Typography>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  Delete selected nodes with <strong>Del</strong>; undo with <strong>Ctrl+Z</strong>.
+                </Typography>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  To delete a connection, select the dashed line and press <strong>Del</strong>.
+                </Typography>
+                <Typography component="li" variant="body2" sx={{ mb: 0.6 }}>
+                  Select a node and press <strong>R</strong> to rotate handles 90 degrees per press.
+                </Typography>
+                <Typography component="li" variant="body2">
+                  Stack identical buildings: select them and click{" "}
+                  <Icons.Layers sx={{ fontSize: 16, color: "#60a5fa", verticalAlign: "text-bottom" }} />.
+                  Unstack with{" "}
+                  <Icons.LayersClear sx={{ fontSize: 16, color: "#f97316", verticalAlign: "text-bottom" }} />.
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                Reports
+              </Typography>
+              <Typography variant="body2">
+                The system tracks production efficiency and shows status indicators:
+              </Typography>
+              <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.6 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      bgcolor: "#ef4444",
+                      boxShadow: "0 0 6px rgba(239,68,68,0.6)",
+                    }}
+                  />
+                  <Typography variant="body2">
+                    <strong>Inefficient:</strong> not enough input for the connected demand. Shows
+                    supply vs. required rate.
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      bgcolor: "#10b981",
+                      boxShadow: "0 0 6px rgba(16,185,129,0.6)",
+                    }}
+                  />
+                  <Typography variant="body2">
+                    <strong>Optimal:</strong> production matches demand.
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      bgcolor: "#eab308",
+                      boxShadow: "0 0 6px rgba(234,179,8,0.6)",
+                    }}
+                  />
+                  <Typography variant="body2">
+                    <strong>Overproduction:</strong> producing more than downstream can consume.
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                Too much on screen?
+              </Typography>
+              <Typography variant="body2">
+                Click{" "}
+                <Icons.Tune sx={{ fontSize: 16, color: "#94a3b8", verticalAlign: "text-bottom" }} />{" "}
+                to toggle UI elements if you want a cleaner view.
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: "#e2e8f0", fontWeight: 700 }}>
+                Smart connections
+              </Typography>
+              <Typography variant="body2">
+                In many cases the system auto-assigns recipes and outputs. If a recipe is missing,
+                it simply hasn’t been added to the database yet. Expect some gaps for now.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button onClick={() => setHowToOpen(false)} sx={{ color: "#e2e8f0" }}>
             Close
           </Button>
         </DialogActions>
